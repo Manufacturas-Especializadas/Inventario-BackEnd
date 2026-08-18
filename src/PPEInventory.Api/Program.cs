@@ -239,7 +239,9 @@ app.UseExceptionHandler();
             "PPE Inventory API v1");
     });
 
-
+app.MapGet(
+    "/",
+    () => Results.Redirect("/swagger"));
 
 
 app.UseHttpsRedirection();
