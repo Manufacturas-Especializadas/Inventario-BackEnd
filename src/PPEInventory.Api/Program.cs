@@ -229,8 +229,7 @@ var app = builder.Build();
 app.UseExceptionHandler();
 
 
-if (app.Environment.IsDevelopment())
-{
+
     app.MapOpenApi();
 
     app.UseSwaggerUI(options =>
@@ -239,7 +238,7 @@ if (app.Environment.IsDevelopment())
             "/openapi/v1.json",
             "PPE Inventory API v1");
     });
-}
+
 
 
 
