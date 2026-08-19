@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
 using PPEInventory.Application.Features.ProductSuppliers.Commands.Create;
-
+using PPEInventory.Application.Features.ProductSuppliers.Queries.GetAll;
 namespace PPEInventory.Api.Controllers;
 
 [ApiController]
@@ -16,6 +16,33 @@ public class ProductSuppliersController : ControllerBase
         IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+
+    [HttpGet("{ppeProductId:int}")]
+    [Authorize(
+        Policy = AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult> GetByProduct(
+        int ppeProductId,
+        CancellationToken cancellationToken)
+    {
+        if (ppeProductId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "El producto EPP no es válido."
+                });
+        }
+
+        var result =
+            await _mediator.Send(
+                new GetProductSuppliersQuery(
+                    ppeProductId),
+                cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpPost]
