@@ -68,5 +68,10 @@ public class PPERequestConfiguration
             .WithMany()
             .HasForeignKey(x => x.CancelledByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.RequestedForOrganizationalUnit)
+    .WithMany()
+    .HasForeignKey(x => x.RequestedForOrganizationalUnitId)
+    .OnDelete(DeleteBehavior.Restrict);
     }
 }

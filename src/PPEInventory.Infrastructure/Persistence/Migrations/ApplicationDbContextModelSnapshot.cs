@@ -120,7 +120,7 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("DepartmentId")
+                    b.Property<int?>("DepartmentId")
                         .HasColumnType("int");
 
                     b.Property<string>("EmployeeNumber")
@@ -140,6 +140,9 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<int?>("OrganizationalUnitId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -151,6 +154,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("LineId");
+
+                    b.HasIndex("OrganizationalUnitId");
 
                     b.ToTable("Employees", (string)null);
                 });
@@ -538,6 +543,89 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.ToTable("InventoryMovements", (string)null);
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.OrganizationalUnit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId", "Name")
+                        .IsUnique()
+                        .HasFilter("[ParentId] IS NOT NULL");
+
+                    b.ToTable("OrganizationalUnits", (string)null);
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.OrganizationalUnitPPELimit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxQuantityPerCycle")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrganizationalUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PPEProductId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PPEProductId");
+
+                    b.HasIndex("OrganizationalUnitId", "PPEProductId")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationalUnitPPELimits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OrganizationalUnitPPELimits_MaxQuantity", "[MaxQuantityPerCycle] > 0");
+                        });
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.PPECategory", b =>
                 {
                     b.Property<int>("Id")
@@ -603,15 +691,15 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("DefaultMaxQuantityPerCycle")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
-
-                    b.Property<int?>("MaxQuantityPerRequest")
-                        .HasColumnType("int");
 
                     b.Property<int>("MinimumStock")
                         .HasColumnType("int");
@@ -718,6 +806,9 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<int>("RequestReasonId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RequestedForOrganizationalUnitId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -742,6 +833,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("RequestReasonId");
 
+                    b.HasIndex("RequestedForOrganizationalUnitId");
+
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("PPERequests", (string)null);
@@ -754,6 +847,9 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AppliedMaxQuantityPerCycle")
+                        .HasColumnType("int");
 
                     b.Property<int>("PPEProductId")
                         .HasColumnType("int");
@@ -1332,17 +1428,23 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasOne("PPEInventory.Domain.Entities.Department", "Department")
                         .WithMany("Employees")
                         .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PPEInventory.Domain.Entities.ProductionLine", "Line")
                         .WithMany("Employees")
                         .HasForeignKey("LineId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("PPEInventory.Domain.Entities.OrganizationalUnit", "OrganizationalUnit")
+                        .WithMany("Employees")
+                        .HasForeignKey("OrganizationalUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Department");
 
                     b.Navigation("Line");
+
+                    b.Navigation("OrganizationalUnit");
                 });
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.GoodsReceipt", b =>
@@ -1549,6 +1651,35 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.OrganizationalUnit", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.OrganizationalUnit", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.OrganizationalUnitPPELimit", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.OrganizationalUnit", "OrganizationalUnit")
+                        .WithMany("PPELimits")
+                        .HasForeignKey("OrganizationalUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PPEInventory.Domain.Entities.PPEProduct", "PPEProduct")
+                        .WithMany("OrganizationalUnitLimits")
+                        .HasForeignKey("PPEProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrganizationalUnit");
+
+                    b.Navigation("PPEProduct");
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.PPECategory", b =>
                 {
                     b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
@@ -1623,6 +1754,11 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.OrganizationalUnit", "RequestedForOrganizationalUnit")
+                        .WithMany()
+                        .HasForeignKey("RequestedForOrganizationalUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PPEInventory.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
@@ -1638,6 +1774,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("RequestReason");
+
+                    b.Navigation("RequestedForOrganizationalUnit");
 
                     b.Navigation("Warehouse");
                 });
@@ -1844,6 +1982,15 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.OrganizationalUnit", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("Employees");
+
+                    b.Navigation("PPELimits");
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.PPECategory", b =>
                 {
                     b.Navigation("Products");
@@ -1860,6 +2007,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("InventoryCountItems");
 
                     b.Navigation("InventoryMovements");
+
+                    b.Navigation("OrganizationalUnitLimits");
 
                     b.Navigation("ProductSuppliers");
 

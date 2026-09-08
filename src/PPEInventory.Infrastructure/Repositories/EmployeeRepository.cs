@@ -21,6 +21,7 @@ public class EmployeeRepository : IEmployeeRepository
             .AsNoTracking()
             .Include(x => x.Department)
             .Include(x => x.Line)
+            .Include(x => x.OrganizationalUnit)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
     }
@@ -33,6 +34,7 @@ public class EmployeeRepository : IEmployeeRepository
             .AsNoTracking()
             .Include(x => x.Department)
             .Include(x => x.Line)
+            .Include(x => x.OrganizationalUnit)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -43,12 +45,15 @@ public class EmployeeRepository : IEmployeeRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Employees
-            .AsNoTracking()
-            .Include(x => x.Department)
-            .Include(x => x.Line)
-            .FirstOrDefaultAsync(
-                x => x.EmployeeNumber == employeeNumber,
-                cancellationToken);
+        .AsNoTracking()
+        .Include(x => x.Department)
+        .Include(x => x.Line)
+        .Include(x => x.OrganizationalUnit)
+        .FirstOrDefaultAsync(
+            x =>
+                x.EmployeeNumber ==
+                employeeNumber,
+            cancellationToken);
     }
 
     public async Task<bool> ExistsByEmployeeNumberAsync(

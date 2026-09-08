@@ -32,7 +32,7 @@ public class GetEmployeesQueryHandler
                 Name = x.Name,
 
                 DepartmentId = x.DepartmentId,
-                DepartmentName = x.Department.Name,
+                DepartmentName = x.Department?.Name,
 
                 LineId = x.LineId,
                 LineName = x.Line?.Name,

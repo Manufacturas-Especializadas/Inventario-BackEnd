@@ -16,6 +16,10 @@ public class PPERequestDto
 
     public string EmployeeName { get; set; } = string.Empty;
 
+    public int? RequestedForOrganizationalUnitId { get; set; }
+
+    public string? RequestedForOrganizationalUnitName { get; set; } = string.Empty;
+
     public int WarehouseId { get; set; }
 
     public string WarehouseName { get; set; } = string.Empty;

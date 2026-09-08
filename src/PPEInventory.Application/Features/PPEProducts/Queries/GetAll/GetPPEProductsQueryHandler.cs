@@ -45,8 +45,8 @@ public class GetPPEProductsQueryHandler
 
                 MinimumStock = x.MinimumStock,
 
-                MaxQuantityPerRequest =
-                    x.MaxQuantityPerRequest,
+                DefaultMaxQuantityPerCycle =
+                    x.DefaultMaxQuantityPerCycle,
 
                 ReplacementIntervalDays =
                     x.ReplacementIntervalDays,

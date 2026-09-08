@@ -22,6 +22,12 @@ public static class PPERequestMappings
             EmployeeName =
                 request.Employee.Name,
 
+            RequestedForOrganizationalUnitId =
+    request.RequestedForOrganizationalUnitId,
+
+            RequestedForOrganizationalUnitName =
+    request.RequestedForOrganizationalUnit?.Name,
+
             WarehouseId =
                 request.WarehouseId,
 

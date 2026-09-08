@@ -3,6 +3,7 @@ using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Entities;
 using PPEInventory.Domain.Enums;
 using PPEInventory.Infrastructure.Persistence;
+using PPEInventory.Domain.Constants;
 
 namespace PPEInventory.Infrastructure.Repositories;
 
@@ -36,6 +37,7 @@ public class PPERequestRepository
                 .ThenInclude(x => x.Department)
             .Include(x => x.Employee)
                 .ThenInclude(x => x.Line)
+            .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
             .Include(x => x.Items)
@@ -45,33 +47,13 @@ public class PPERequestRepository
                 cancellationToken);
     }
 
-    public Task<DateTime?> GetLastDeliveredAtAsync(
-        int employeeId,
-        int ppeProductId,
-        CancellationToken cancellationToken = default)
-    {
-        return _context.PPERequestItems
-            .AsNoTracking()
-            .Where(x =>
-                x.PPERequest.EmployeeId == employeeId &&
-                x.PPEProductId == ppeProductId &&
-                x.PPERequest.Status ==
-                    PPERequestStatus.Delivered &&
-                x.PPERequest.DeliveredAt.HasValue)
-            .OrderByDescending(
-                x => x.PPERequest.DeliveredAt)
-            .Select(
-                x => x.PPERequest.DeliveredAt)
-            .FirstOrDefaultAsync(
-                cancellationToken);
-    }
-
     public Task<PPERequest?> GetByFolioForUpdateAsync(
     string folio,
     CancellationToken cancellationToken = default)
     {
         return _context.PPERequests
             .Include(x => x.Employee)
+            .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
             .Include(x => x.Items)
@@ -89,6 +71,7 @@ public class PPERequestRepository
         return await _context.PPERequests
             .AsNoTracking()
             .Include(x => x.Employee)
+            .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
             .Include(x => x.Items)
@@ -108,6 +91,7 @@ public class PPERequestRepository
             _context.PPERequests
                 .AsNoTracking()
                 .Include(x => x.Employee)
+                .Include(x => x.RequestedForOrganizationalUnit)
                 .Include(x => x.Warehouse)
                 .Include(x => x.RequestReason)
                 .Include(x => x.Items)
@@ -136,6 +120,7 @@ public class PPERequestRepository
         return await _context.PPERequests
             .AsNoTracking()
             .Include(x => x.Employee)
+            .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
             .Include(x => x.Items)
@@ -145,5 +130,48 @@ public class PPERequestRepository
             .OrderByDescending(x => x.CreatedAt)
             .ThenByDescending(x => x.Id)
             .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> GetCommittedNormalQuantityInCycleAsync(
+    int requestedForOrganizationalUnitId,
+    int ppeProductId,
+    DateTime cycleStart,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.PPERequestItems
+            .AsNoTracking()
+            .Where(x =>
+                x.PPERequest.RequestedForOrganizationalUnitId ==
+    requestedForOrganizationalUnitId &&
+
+                x.PPEProductId ==
+                    ppeProductId &&
+
+                x.PPERequest.RequestReason.Code !=
+                    RequestReasonCodes.Damage &&
+
+                x.PPERequest.RequestReason.Code !=
+                    RequestReasonCodes.Lost &&
+
+                x.PPERequest.RequestReason.Code !=
+                    RequestReasonCodes.Other &&
+
+                (
+                    x.PPERequest.Status ==
+                        PPERequestStatus.Pending
+                    ||
+                    (
+                        x.PPERequest.Status ==
+                            PPERequestStatus.Delivered &&
+
+                        x.PPERequest.DeliveredAt.HasValue &&
+
+                        x.PPERequest.DeliveredAt.Value >=
+                            cycleStart
+                    )
+                ))
+            .SumAsync(
+                x => x.Quantity,
+                cancellationToken);
     }
 }

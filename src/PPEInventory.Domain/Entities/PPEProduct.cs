@@ -24,7 +24,7 @@ public class PPEProduct
 
     public int MinimumStock { get; set; }
 
-    public int? MaxQuantityPerRequest { get; set; }
+    public int? DefaultMaxQuantityPerCycle { get; set; }
 
     public int? ReplacementIntervalDays { get; set; }
 
@@ -64,4 +64,11 @@ public class PPEProduct
 
     public ICollection<InventoryMovement> InventoryMovements { get; set; }
         = new List<InventoryMovement>();
+
+    public ICollection<OrganizationalUnitPPELimit>
+    OrganizationalUnitLimits
+    {
+        get;
+        set;
+    } = new List<OrganizationalUnitPPELimit>();
 }

@@ -26,7 +26,7 @@ public class PPEProductDto
 
     public int MinimumStock { get; set; }
 
-    public int? MaxQuantityPerRequest { get; set; }
+    public int? DefaultMaxQuantityPerCycle { get; set; }
 
     public int? ReplacementIntervalDays { get; set; }
 

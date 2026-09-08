@@ -17,35 +17,38 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
 
-        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped< IDepartmentRepository, DepartmentRepository>();
 
-        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddSingleton< IDateTimeProvider, DateTimeProvider>();
 
-        services.AddScoped<IProductionLineRepository,ProductionLineRepository>();
+        services.AddScoped< IProductionLineRepository,ProductionLineRepository>();
 
-        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped< IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped< IOrganizationalUnitRepository, OrganizationalUnitRepository>();
 
-        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped< IOrganizationalUnitPPELimitRepository, OrganizationalUnitPPELimitRepository>();
 
-        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped< IUserRepository, UserRepository>();
 
-        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddScoped< IRoleRepository, RoleRepository>();
 
-        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton< IPasswordHasher, PasswordHasher>();
 
-        services.AddScoped<IPPECategoryRepository, PPECategoryRepository>();
+        services.AddScoped< IJwtTokenGenerator, JwtTokenGenerator>();
 
-        services.AddScoped<IPPEProductRepository, PPEProductRepository>();
+        services.AddScoped< IPPECategoryRepository, PPECategoryRepository>();
 
-        services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped< IPPEProductRepository, PPEProductRepository>();
 
-        services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+        services.AddScoped< ISupplierRepository, SupplierRepository>();
 
-        services.AddScoped<IProductSupplierRepository, ProductSupplierRepository>();
+        services.AddScoped< IWarehouseRepository, WarehouseRepository>();
 
-        services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+        services.AddScoped< IProductSupplierRepository, ProductSupplierRepository>();
 
-        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped< IPurchaseOrderRepository, PurchaseOrderRepository>();
+
+        services.AddScoped <IUnitOfWork, EfUnitOfWork>();
 
         services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
 

@@ -46,4 +46,10 @@ public class PPERequest
 
     public ICollection<PPERequestItem> Items { get; set; }
         = new List<PPERequestItem>();
+
+    public int? RequestedForOrganizationalUnitId { get; set; }
+
+    public OrganizationalUnit? RequestedForOrganizationalUnit { get; set; } = null;
+    
+
 }
