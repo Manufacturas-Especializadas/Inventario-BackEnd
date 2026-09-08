@@ -12,11 +12,6 @@ public interface IPPERequestRepository
         string folio,
         CancellationToken cancellationToken = default);
 
-    Task<DateTime?> GetLastDeliveredAtAsync(
-        int employeeId,
-        int ppeProductId,
-        CancellationToken cancellationToken = default);
-
     Task<PPERequest?> GetByFolioForUpdateAsync(
     string folio,
     CancellationToken cancellationToken = default);
@@ -34,4 +29,11 @@ public interface IPPERequestRepository
     GetHistoryByEmployeeNumberAsync(
         string employeeNumber,
         CancellationToken cancellationToken = default);
+
+    Task<int> GetCommittedNormalQuantityInCycleAsync(
+    int requestedForOrganizationalUnitId,
+    int ppeProductId,
+    DateTime cycleStart,
+    CancellationToken cancellationToken = default);
+
 }

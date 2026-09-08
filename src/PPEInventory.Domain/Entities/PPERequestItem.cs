@@ -13,4 +13,5 @@ public class PPERequestItem
     public PPERequest PPERequest { get; set; } = null!;
 
     public PPEProduct PPEProduct { get; set; } = null!;
+    public int? AppliedMaxQuantityPerCycle { get; set; }
 }

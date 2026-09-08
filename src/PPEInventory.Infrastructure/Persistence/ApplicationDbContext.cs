@@ -17,6 +17,14 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Employee> Employees => Set<Employee>();
 
+    public DbSet<OrganizationalUnit>
+    OrganizationalUnits =>
+        Set<OrganizationalUnit>();
+
+    public DbSet<OrganizationalUnitPPELimit>
+        OrganizationalUnitPPELimits =>
+            Set<OrganizationalUnitPPELimit>();
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Role> Roles => Set<Role>();

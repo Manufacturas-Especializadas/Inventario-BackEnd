@@ -4,6 +4,7 @@ namespace PPEInventory.Application.Features.PPERequests.Commands.Create;
 
 public record CreatePPERequestCommand(
     string EmployeeNumber,
+    int RequestedForOrganizationalUnitId,
     int WarehouseId,
     int RequestReasonId,
     string? Notes,

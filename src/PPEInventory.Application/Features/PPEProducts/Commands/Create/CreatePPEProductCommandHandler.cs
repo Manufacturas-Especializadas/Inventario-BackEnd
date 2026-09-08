@@ -74,8 +74,8 @@ public class CreatePPEProductCommandHandler
             MinimumStock =
                 request.MinimumStock,
 
-            MaxQuantityPerRequest =
-                request.MaxQuantityPerRequest,
+            DefaultMaxQuantityPerCycle =
+                request.DefaultMaxQuantityPerCycle,
 
             ReplacementIntervalDays =
                 request.ReplacementIntervalDays,
@@ -116,8 +116,8 @@ public class CreatePPEProductCommandHandler
 
             MinimumStock = product.MinimumStock,
 
-            MaxQuantityPerRequest =
-                product.MaxQuantityPerRequest,
+            DefaultMaxQuantityPerCycle =
+                product.DefaultMaxQuantityPerCycle,
 
             ReplacementIntervalDays =
                 product.ReplacementIntervalDays,

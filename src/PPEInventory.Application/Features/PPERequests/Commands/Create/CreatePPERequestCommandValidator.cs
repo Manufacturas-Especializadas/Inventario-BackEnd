@@ -11,6 +11,9 @@ public class CreatePPERequestCommandValidator
             .NotEmpty()
             .MaximumLength(20);
 
+        RuleFor(x => x.RequestedForOrganizationalUnitId)
+    .GreaterThan(0);
+
         RuleFor(x => x.WarehouseId)
             .GreaterThan(0);
 

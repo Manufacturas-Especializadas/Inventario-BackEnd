@@ -12,6 +12,6 @@ public record CreatePPEProductCommand(
     string? Specification,
     string StockUnit,
     int MinimumStock,
-    int? MaxQuantityPerRequest,
+    int? DefaultMaxQuantityPerCycle,
     int? ReplacementIntervalDays)
     : IRequest<PPEProductDto>;

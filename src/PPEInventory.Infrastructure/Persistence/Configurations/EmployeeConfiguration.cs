@@ -30,5 +30,12 @@ public class EmployeeConfiguration
 
         builder.HasIndex(x => x.EmployeeNumber)
             .IsUnique();
+
+        builder.HasOne(
+        x => x.OrganizationalUnit)
+    .WithMany(x => x.Employees)
+    .HasForeignKey(
+        x => x.OrganizationalUnitId)
+    .OnDelete(DeleteBehavior.Restrict);
     }
 }

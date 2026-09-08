@@ -6,36 +6,50 @@ using PPEInventory.Domain.Entities;
 namespace PPEInventory.Application.Features.Employees.Commands.Create;
 
 public class CreateEmployeeCommandHandler
-    : IRequestHandler<CreateEmployeeCommand, EmployeeDto>
+    : IRequestHandler<
+        CreateEmployeeCommand,
+        EmployeeDto>
 {
-    private readonly IEmployeeRepository _employeeRepository;
-    private readonly IDepartmentRepository _departmentRepository;
-    private readonly IProductionLineRepository _productionLineRepository;
-    private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IEmployeeRepository
+        _employeeRepository;
+
+    private readonly IOrganizationalUnitRepository
+        _organizationalUnitRepository;
+
+    private readonly IDateTimeProvider
+        _dateTimeProvider;
 
     public CreateEmployeeCommandHandler(
         IEmployeeRepository employeeRepository,
-        IDepartmentRepository departmentRepository,
-        IProductionLineRepository productionLineRepository,
+        IOrganizationalUnitRepository
+            organizationalUnitRepository,
         IDateTimeProvider dateTimeProvider)
     {
-        _employeeRepository = employeeRepository;
-        _departmentRepository = departmentRepository;
-        _productionLineRepository = productionLineRepository;
-        _dateTimeProvider = dateTimeProvider;
+        _employeeRepository =
+            employeeRepository;
+
+        _organizationalUnitRepository =
+            organizationalUnitRepository;
+
+        _dateTimeProvider =
+            dateTimeProvider;
     }
 
     public async Task<EmployeeDto> Handle(
         CreateEmployeeCommand request,
         CancellationToken cancellationToken)
     {
-        var employeeNumber = request.EmployeeNumber.Trim();
-        var employeeName = request.Name.Trim();
+        var employeeNumber =
+            request.EmployeeNumber.Trim();
+
+        var employeeName =
+            request.Name.Trim();
 
         var employeeAlreadyExists =
-            await _employeeRepository.ExistsByEmployeeNumberAsync(
-                employeeNumber,
-                cancellationToken);
+            await _employeeRepository
+                .ExistsByEmployeeNumberAsync(
+                    employeeNumber,
+                    cancellationToken);
 
         if (employeeAlreadyExists)
         {
@@ -43,82 +57,98 @@ public class CreateEmployeeCommandHandler
                 $"Employee number '{employeeNumber}' already exists.");
         }
 
-        var department =
-            await _departmentRepository.GetByIdAsync(
-                request.DepartmentId,
-                cancellationToken);
-
-        if (department is null)
-        {
-            throw new NotFoundException(
-                $"Department with id '{request.DepartmentId}' was not found.");
-        }
-
-        if (!department.IsActive)
-        {
-            throw new ConflictException(
-                $"Department '{department.Name}' is inactive.");
-        }
-
-        ProductionLine? productionLine = null;
-
-        if (request.LineId.HasValue)
-        {
-            productionLine =
-                await _productionLineRepository.GetByIdAsync(
-                    request.LineId.Value,
+        var organizationalUnit =
+            await _organizationalUnitRepository
+                .GetByIdAsync(
+                    request.OrganizationalUnitId,
                     cancellationToken);
 
-            if (productionLine is null)
-            {
-                throw new NotFoundException(
-                    $"Production line with id '{request.LineId.Value}' was not found.");
-            }
-
-            if (!productionLine.IsActive)
-            {
-                throw new ConflictException(
-                    $"Production line '{productionLine.Name}' is inactive.");
-            }
-
-            if (productionLine.DepartmentId != department.Id)
-            {
-                throw new ConflictException(
-                    $"Production line '{productionLine.Name}' does not belong to department '{department.Name}'.");
-            }
+        if (organizationalUnit is null)
+        {
+            throw new NotFoundException(
+                $"Organizational unit with id '{request.OrganizationalUnitId}' was not found.");
         }
 
-        var employee = new Employee
+        if (!organizationalUnit.IsActive)
         {
-            EmployeeNumber = employeeNumber,
-            Name = employeeName,
-            DepartmentId = department.Id,
-            LineId = productionLine?.Id,
-            IsActive = true,
-            CreatedAt = _dateTimeProvider.UtcNow
-        };
+            throw new ConflictException(
+                $"Organizational unit '{organizationalUnit.Name}' is inactive.");
+        }
+
+        var employee =
+            new Employee
+            {
+                EmployeeNumber =
+                    employeeNumber,
+
+                Name =
+                    employeeName,
+
+                OrganizationalUnitId =
+                    organizationalUnit.Id,
+
+                /*
+                 * Legacy.
+                 * Ya no son fuente de verdad.
+                 */
+                DepartmentId =
+                    null,
+
+                LineId =
+                    null,
+
+                IsActive =
+                    true,
+
+                CreatedAt =
+                    _dateTimeProvider.UtcNow
+            };
 
         await _employeeRepository.AddAsync(
             employee,
             cancellationToken);
 
-        await _employeeRepository.SaveChangesAsync(
-            cancellationToken);
+        await _employeeRepository
+            .SaveChangesAsync(
+                cancellationToken);
 
         return new EmployeeDto
         {
-            Id = employee.Id,
-            EmployeeNumber = employee.EmployeeNumber,
-            Name = employee.Name,
+            Id =
+                employee.Id,
 
-            DepartmentId = department.Id,
-            DepartmentName = department.Name,
+            EmployeeNumber =
+                employee.EmployeeNumber,
 
-            LineId = productionLine?.Id,
-            LineName = productionLine?.Name,
+            Name =
+                employee.Name,
 
-            IsActive = employee.IsActive,
-            CreatedAt = employee.CreatedAt
+            DepartmentId =
+                null,
+
+            DepartmentName =
+                null,
+
+            LineId =
+                null,
+
+            LineName =
+                null,
+
+            OrganizationalUnitId =
+                organizationalUnit.Id,
+
+            OrganizationalUnitName =
+                organizationalUnit.Name,
+
+            OrganizationalUnitType =
+                organizationalUnit.Type,
+
+            IsActive =
+                employee.IsActive,
+
+            CreatedAt =
+                employee.CreatedAt
         };
     }
 }

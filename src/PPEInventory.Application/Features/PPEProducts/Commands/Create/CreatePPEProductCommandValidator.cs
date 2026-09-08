@@ -36,9 +36,9 @@ public class CreatePPEProductCommandValidator
         RuleFor(x => x.MinimumStock)
             .GreaterThanOrEqualTo(0);
 
-        RuleFor(x => x.MaxQuantityPerRequest)
+        RuleFor(x => x.DefaultMaxQuantityPerCycle)
             .GreaterThan(0)
-            .When(x => x.MaxQuantityPerRequest.HasValue);
+            .When(x => x.DefaultMaxQuantityPerCycle.HasValue);
 
         RuleFor(x => x.ReplacementIntervalDays)
             .GreaterThan(0)
