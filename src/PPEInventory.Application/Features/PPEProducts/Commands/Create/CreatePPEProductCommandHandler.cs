@@ -15,19 +15,22 @@ public class CreatePPEProductCommandHandler
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfMeasureRepository _unitRepository;
+    private readonly IProductSizeRepository _sizeRepository;
 
     public CreatePPEProductCommandHandler(
         IPPEProductRepository productRepository,
         IPPECategoryRepository categoryRepository,
         IUnitOfMeasureRepository unitRepository,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IProductSizeRepository sizeRepository)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _unitRepository = unitRepository;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _sizeRepository = sizeRepository;
     }
 
     public async Task<PPEProductDto> Handle(
@@ -68,6 +71,28 @@ public class CreatePPEProductCommandHandler
                 $"Unit '{stockUnit.Name}' is inactive.");
         }
 
+        ProductSize? productSize = null;
+
+        if (request.SizeId.HasValue)
+        {
+            productSize =
+                await _sizeRepository.GetByIdAsync(
+                    request.SizeId.Value,
+                    cancellationToken);
+
+            if (productSize is null)
+            {
+                throw new NotFoundException(
+                    $"Product size with id '{request.SizeId.Value}' was not found.");
+            }
+
+            if (!productSize.IsActive)
+            {
+                throw new ConflictException(
+                    $"Product size '{productSize.Name}' is inactive.");
+            }
+        }
+
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
@@ -80,7 +105,7 @@ public class CreatePPEProductCommandHandler
 
             Description = Normalize(request.Description),
 
-            Size = Normalize(request.Size),
+            SizeId = productSize?.Id,
 
             Color = Normalize(request.Color),
 
@@ -127,7 +152,8 @@ public class CreatePPEProductCommandHandler
             Name = product.Name,
             Description = product.Description,
 
-            Size = product.Size,
+            SizeId = productSize?.Id,
+            Size = productSize?.Name,
             Color = product.Color,
             Model = product.Model,
             Specification = product.Specification,

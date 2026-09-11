@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PPEInventory.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using PPEInventory.Infrastructure.Persistence;
 namespace PPEInventory.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911150424_AddProductSizesCatalog")]
+    partial class AddProductSizesCatalog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -716,8 +719,9 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ReplacementIntervalDays")
                         .HasColumnType("int");
 
-                    b.Property<int?>("SizeId")
-                        .HasColumnType("int");
+                    b.Property<string>("Size")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Sku")
                         .IsRequired()
@@ -746,8 +750,6 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("SizeId");
 
                     b.HasIndex("Sku")
                         .IsUnique();
@@ -1797,11 +1799,6 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("PPEInventory.Domain.Entities.ProductSize", "ProductSize")
-                        .WithMany()
-                        .HasForeignKey("SizeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("PPEInventory.Domain.Entities.UnitOfMeasure", "StockUnitOfMeasure")
                         .WithMany()
                         .HasForeignKey("StockUnitId")
@@ -1816,8 +1813,6 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("CreatedByUser");
-
-                    b.Navigation("ProductSize");
 
                     b.Navigation("StockUnitOfMeasure");
 

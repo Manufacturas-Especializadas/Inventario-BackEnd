@@ -6,7 +6,7 @@ public record CreatePPEProductCommand(
     int CategoryId,
     string Name,
     string? Description,
-    string? Size,
+    int? SizeId,
     string? Color,
     string? Model,
     string? Specification,

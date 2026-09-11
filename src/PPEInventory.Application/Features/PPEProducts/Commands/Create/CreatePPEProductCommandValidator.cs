@@ -17,8 +17,9 @@ public class CreatePPEProductCommandValidator
         RuleFor(x => x.Description)
             .MaximumLength(500);
 
-        RuleFor(x => x.Size)
-            .MaximumLength(50);
+        RuleFor(x => x.SizeId)
+            .GreaterThan(0)
+            .When(x => x.SizeId.HasValue);
 
         RuleFor(x => x.Color)
             .MaximumLength(50);

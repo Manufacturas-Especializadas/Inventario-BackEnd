@@ -23,6 +23,7 @@ public class PPEProductRepository
             .AsNoTracking()
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
+            .Include(x => x.ProductSize)
             .OrderBy(x => x.Name)
             .ThenBy(x => x.Sku)
             .ToListAsync(cancellationToken);
@@ -36,6 +37,7 @@ public class PPEProductRepository
             .AsNoTracking()
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
+            .Include(x => x.ProductSize)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -65,6 +67,7 @@ public class PPEProductRepository
             .AsNoTracking()
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
+            .Include(x => x.ProductSize)
             .Where(x => ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
     }

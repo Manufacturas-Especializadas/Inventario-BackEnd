@@ -36,7 +36,8 @@ public class GetPPEProductsQueryHandler
                 Name = x.Name,
                 Description = x.Description,
 
-                Size = x.Size,
+                SizeId = x.SizeId,
+                Size = x.ProductSize?.Name,
                 Color = x.Color,
                 Model = x.Model,
                 Specification = x.Specification,
