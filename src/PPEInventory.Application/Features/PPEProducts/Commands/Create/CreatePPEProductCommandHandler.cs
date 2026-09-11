@@ -16,6 +16,7 @@ public class CreatePPEProductCommandHandler
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfMeasureRepository _unitRepository;
     private readonly IProductSizeRepository _sizeRepository;
+    private readonly IProductColorRepository _colorRepository;
 
     public CreatePPEProductCommandHandler(
         IPPEProductRepository productRepository,
@@ -23,7 +24,8 @@ public class CreatePPEProductCommandHandler
         IUnitOfMeasureRepository unitRepository,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider,
-        IProductSizeRepository sizeRepository)
+        IProductSizeRepository sizeRepository,
+        IProductColorRepository colorRepository)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
@@ -31,6 +33,7 @@ public class CreatePPEProductCommandHandler
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
         _sizeRepository = sizeRepository;
+        _colorRepository = colorRepository;
     }
 
     public async Task<PPEProductDto> Handle(
@@ -93,6 +96,28 @@ public class CreatePPEProductCommandHandler
             }
         }
 
+        ProductColor? productColor = null;
+
+        if (request.ColorId.HasValue)
+        {
+            productColor =
+                await _colorRepository.GetByIdAsync(
+                    request.ColorId.Value,
+                    cancellationToken);
+
+            if (productColor is null)
+            {
+                throw new NotFoundException(
+                    $"Product color with id '{request.ColorId.Value}' was not found.");
+            }
+
+            if (!productColor.IsActive)
+            {
+                throw new ConflictException(
+                    $"Product color '{productColor.Name}' is inactive.");
+            }
+        }
+
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
@@ -107,7 +132,7 @@ public class CreatePPEProductCommandHandler
 
             SizeId = productSize?.Id,
 
-            Color = Normalize(request.Color),
+            ColorId = productColor?.Id,
 
             Model = Normalize(request.Model),
 
@@ -154,7 +179,8 @@ public class CreatePPEProductCommandHandler
 
             SizeId = productSize?.Id,
             Size = productSize?.Name,
-            Color = product.Color,
+            ColorId = productColor?.Id,
+            Color = productColor?.Name,
             Model = product.Model,
             Specification = product.Specification,
 

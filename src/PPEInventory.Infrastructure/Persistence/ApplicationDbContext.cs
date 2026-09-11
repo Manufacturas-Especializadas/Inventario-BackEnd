@@ -80,6 +80,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<UnitOfMeasure> Units => Set<UnitOfMeasure>();
 
     public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
-
+    public DbSet<ProductColor> ProductColors => Set<ProductColor>();
 
 }

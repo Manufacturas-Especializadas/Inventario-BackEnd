@@ -1,12 +1,15 @@
 ﻿using FluentValidation;
 
-namespace PPEInventory.Application.Features.PPEProducts.Commands.Create;
+namespace PPEInventory.Application.Features.PPEProducts.Commands.Update;
 
-public class CreatePPEProductCommandValidator
-    : AbstractValidator<CreatePPEProductCommand>
+public class UpdatePPEProductCommandValidator
+    : AbstractValidator<UpdatePPEProductCommand>
 {
-    public CreatePPEProductCommandValidator()
+    public UpdatePPEProductCommandValidator()
     {
+        RuleFor(x => x.Id)
+            .GreaterThan(0);
+
         RuleFor(x => x.CategoryId)
             .GreaterThan(0);
 
@@ -39,10 +42,18 @@ public class CreatePPEProductCommandValidator
 
         RuleFor(x => x.DefaultMaxQuantityPerCycle)
             .GreaterThan(0)
-            .When(x => x.DefaultMaxQuantityPerCycle.HasValue);
+            .When(
+                x =>
+                    x.DefaultMaxQuantityPerCycle
+                        .HasValue
+            );
 
         RuleFor(x => x.ReplacementIntervalDays)
             .GreaterThan(0)
-            .When(x => x.ReplacementIntervalDays.HasValue);
+            .When(
+                x =>
+                    x.ReplacementIntervalDays
+                        .HasValue
+            );
     }
 }

@@ -1,8 +1,9 @@
 ﻿using MediatR;
 
-namespace PPEInventory.Application.Features.PPEProducts.Commands.Create;
+namespace PPEInventory.Application.Features.PPEProducts.Commands.Update;
 
-public record CreatePPEProductCommand(
+public record UpdatePPEProductCommand(
+    int Id,
     int CategoryId,
     string Name,
     string? Description,

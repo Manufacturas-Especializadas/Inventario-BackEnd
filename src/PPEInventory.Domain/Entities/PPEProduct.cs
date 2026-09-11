@@ -14,7 +14,7 @@ public class PPEProduct
 
     public int? SizeId { get; set; }
 
-    public string? Color { get; set; }
+    public int? ColorId { get; set; }
 
     public string? Model { get; set; }
 
@@ -45,6 +45,7 @@ public class PPEProduct
     public User? UpdatedByUser { get; set; }
 
     public UnitOfMeasure StockUnitOfMeasure { get; set; } = null!;
+    public ProductColor? ProductColor { get; set; }
 
     public ICollection<InventoryAdjustmentItem> InventoryAdjustmentItems { get; set; }
     = new List<InventoryAdjustmentItem>();

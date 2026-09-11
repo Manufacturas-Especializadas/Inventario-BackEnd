@@ -22,4 +22,8 @@ public interface IPPEProductRepository
     IReadOnlyCollection<int> ids,
     CancellationToken cancellationToken = default);
 
+    Task<PPEProduct?> GetByIdForUpdateAsync(
+    int id,
+    CancellationToken cancellationToken = default);
+
 }

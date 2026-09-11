@@ -24,6 +24,7 @@ public class PPEProductRepository
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
             .Include(x => x.ProductSize)
+            .Include(x => x.ProductColor)
             .OrderBy(x => x.Name)
             .ThenBy(x => x.Sku)
             .ToListAsync(cancellationToken);
@@ -38,6 +39,7 @@ public class PPEProductRepository
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
             .Include(x => x.ProductSize)
+            .Include(x => x.ProductColor)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -68,8 +70,22 @@ public class PPEProductRepository
             .Include(x => x.Category)
             .Include(x => x.StockUnitOfMeasure)
             .Include(x => x.ProductSize)
+            .Include(x => x.ProductColor)
             .Where(x => ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
+    }
+    public Task<PPEProduct?> GetByIdForUpdateAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.PPEProducts
+            .Include(x => x.Category)
+            .Include(x => x.StockUnitOfMeasure)
+            .Include(x => x.ProductSize)
+            .Include(x => x.ProductColor)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
     }
 
 }

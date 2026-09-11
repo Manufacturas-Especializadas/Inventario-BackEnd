@@ -68,6 +68,8 @@ public static class DependencyInjection
 
         services.AddScoped<IProductSizeRepository, ProductSizeRepository>();
 
+        services.AddScoped<IProductColorRepository, ProductColorRepository>();
+
         return services;
     }
 }

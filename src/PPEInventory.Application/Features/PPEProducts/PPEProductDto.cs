@@ -18,6 +18,8 @@ public class PPEProductDto
 
     public string? Size { get; set; }
 
+    public int? ColorId { get; set; }
+
     public string? Color { get; set; }
 
     public string? Model { get; set; }
