@@ -22,6 +22,7 @@ public class PPEProductRepository
         return await _context.PPEProducts
             .AsNoTracking()
             .Include(x => x.Category)
+            .Include(x => x.StockUnitOfMeasure)
             .OrderBy(x => x.Name)
             .ThenBy(x => x.Sku)
             .ToListAsync(cancellationToken);
@@ -34,6 +35,7 @@ public class PPEProductRepository
         return _context.PPEProducts
             .AsNoTracking()
             .Include(x => x.Category)
+            .Include(x => x.StockUnitOfMeasure)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -62,6 +64,7 @@ public class PPEProductRepository
         return await _context.PPEProducts
             .AsNoTracking()
             .Include(x => x.Category)
+            .Include(x => x.StockUnitOfMeasure)
             .Where(x => ids.Contains(x.Id))
             .ToListAsync(cancellationToken);
     }

@@ -23,6 +23,9 @@ public interface IEmployeeRepository
         Employee employee,
         CancellationToken cancellationToken = default);
 
-    Task SaveChangesAsync(
-        CancellationToken cancellationToken = default);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<Employee?> GetByIdForUpdateAsync(
+    int id,
+    CancellationToken cancellationToken = default);
 }

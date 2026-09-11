@@ -19,9 +19,8 @@ public class CreateProductSupplierCommandValidator
         RuleFor(x => x.PackageBarcode)
             .MaximumLength(100);
 
-        RuleFor(x => x.PurchaseUnit)
-            .NotEmpty()
-            .MaximumLength(30);
+        RuleFor(x => x.PurchaseUnitId)
+            .GreaterThan(0);
 
         RuleFor(x => x.UnitsPerPackage)
             .GreaterThan(0);

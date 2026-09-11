@@ -7,7 +7,7 @@ public record CreateProductSupplierCommand(
     int SupplierId,
     string? SupplierProductCode,
     string? PackageBarcode,
-    string PurchaseUnit,
+    int PurchaseUnitId,
     int UnitsPerPackage,
     bool IsPreferred)
     : IRequest<ProductSupplierDto>;

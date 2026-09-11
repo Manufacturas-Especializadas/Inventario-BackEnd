@@ -22,7 +22,11 @@ public class PPEProductDto
 
     public string? Specification { get; set; }
 
+    public int StockUnitId { get; set; }
+
     public string StockUnit { get; set; } = string.Empty;
+
+    public string? StockUnitSymbol { get; set; }
 
     public int MinimumStock { get; set; }
 

@@ -14,15 +14,18 @@ public class CreatePPEProductCommandHandler
     private readonly IPPECategoryRepository _categoryRepository;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IUnitOfMeasureRepository _unitRepository;
 
     public CreatePPEProductCommandHandler(
         IPPEProductRepository productRepository,
         IPPECategoryRepository categoryRepository,
+        IUnitOfMeasureRepository unitRepository,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
+        _unitRepository = unitRepository;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
     }
@@ -48,6 +51,23 @@ public class CreatePPEProductCommandHandler
                 $"PPE category '{category.Name}' is inactive.");
         }
 
+        var stockUnit =
+    await _unitRepository.GetByIdAsync(
+        request.StockUnitId,
+        cancellationToken);
+
+        if (stockUnit is null)
+        {
+            throw new NotFoundException(
+                $"Unit with id '{request.StockUnitId}' was not found.");
+        }
+
+        if (!stockUnit.IsActive)
+        {
+            throw new ConflictException(
+                $"Unit '{stockUnit.Name}' is inactive.");
+        }
+
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
@@ -69,7 +89,7 @@ public class CreatePPEProductCommandHandler
             Specification =
                 Normalize(request.Specification),
 
-            StockUnit = request.StockUnit.Trim(),
+            StockUnitId = stockUnit.Id,
 
             MinimumStock =
                 request.MinimumStock,
@@ -112,7 +132,9 @@ public class CreatePPEProductCommandHandler
             Model = product.Model,
             Specification = product.Specification,
 
-            StockUnit = product.StockUnit,
+            StockUnitId = stockUnit.Id,
+            StockUnit = stockUnit.Name,
+            StockUnitSymbol = stockUnit.Symbol,
 
             MinimumStock = product.MinimumStock,
 

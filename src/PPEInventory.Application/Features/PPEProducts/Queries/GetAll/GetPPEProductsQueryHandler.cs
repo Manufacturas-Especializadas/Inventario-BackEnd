@@ -41,15 +41,17 @@ public class GetPPEProductsQueryHandler
                 Model = x.Model,
                 Specification = x.Specification,
 
-                StockUnit = x.StockUnit,
+                StockUnitId = x.StockUnitId,
+
+                StockUnit = x.StockUnitOfMeasure.Name,
+
+                StockUnitSymbol = x.StockUnitOfMeasure.Symbol,
 
                 MinimumStock = x.MinimumStock,
 
-                DefaultMaxQuantityPerCycle =
-                    x.DefaultMaxQuantityPerCycle,
+                DefaultMaxQuantityPerCycle = x.DefaultMaxQuantityPerCycle,
 
-                ReplacementIntervalDays =
-                    x.ReplacementIntervalDays,
+                ReplacementIntervalDays = x.ReplacementIntervalDays,
 
                 IsActive = x.IsActive,
                 CreatedAt = x.CreatedAt

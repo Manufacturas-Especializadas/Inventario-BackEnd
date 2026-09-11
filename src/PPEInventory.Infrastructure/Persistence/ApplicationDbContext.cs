@@ -77,7 +77,9 @@ public class ApplicationDbContext : DbContext
             typeof(ApplicationDbContext).Assembly);
     }
 
+    public DbSet<UnitOfMeasure> Units => Set<UnitOfMeasure>();
 
+    public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
 
 
 }

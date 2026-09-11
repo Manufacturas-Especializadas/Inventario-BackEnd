@@ -16,7 +16,11 @@ public class ProductSupplierDto
 
     public string? PackageBarcode { get; set; }
 
+    public int PurchaseUnitId { get; set; }
+
     public string PurchaseUnit { get; set; } = string.Empty;
+
+    public string? PurchaseUnitSymbol { get; set; }
 
     public int UnitsPerPackage { get; set; }
 

@@ -733,10 +733,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<string>("StockUnit")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<int>("StockUnitId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -752,6 +750,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Sku")
                         .IsUnique();
+
+                    b.HasIndex("StockUnitId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -898,10 +898,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<string>("PurchaseUnit")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<int>("PurchaseUnitId")
+                        .HasColumnType("int");
 
                     b.Property<string>("SupplierProductCode")
                         .HasMaxLength(100)
@@ -918,6 +916,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("PPEProductId")
                         .IsUnique()
                         .HasFilter("[IsPreferred] = 1 AND [IsActive] = 1");
+
+                    b.HasIndex("PurchaseUnitId");
 
                     b.HasIndex("SupplierId");
 
@@ -1296,6 +1296,50 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Suppliers", (string)null);
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UnitOfMeasure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Symbol")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Units", (string)null);
                 });
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.User", b =>
@@ -1712,6 +1756,12 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.UnitOfMeasure", "StockUnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("StockUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
@@ -1720,6 +1770,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("StockUnitOfMeasure");
 
                     b.Navigation("UpdatedByUser");
                 });
@@ -1813,6 +1865,12 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.UnitOfMeasure", "PurchaseUnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("PurchaseUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PPEInventory.Domain.Entities.Supplier", "Supplier")
                         .WithMany("ProductSuppliers")
                         .HasForeignKey("SupplierId")
@@ -1822,6 +1880,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("PPEProduct");
+
+                    b.Navigation("PurchaseUnitOfMeasure");
 
                     b.Navigation("Supplier");
                 });
@@ -1896,6 +1956,23 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UnitOfMeasure", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
                         .WithMany()

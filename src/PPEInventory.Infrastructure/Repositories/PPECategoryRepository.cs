@@ -36,6 +36,29 @@ public class PPECategoryRepository
                 cancellationToken);
     }
 
+    public Task<PPECategory?> GetByIdForUpdateAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.PPECategories
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
+
+    public Task<bool> ExistsByNameAsync(
+    string name,
+    int excludeId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.PPECategories
+            .AnyAsync(
+                x =>
+                    x.Id != excludeId &&
+                    x.Name == name,
+                cancellationToken);
+    }
+
     public Task<bool> ExistsByNameAsync(
         string name,
         CancellationToken cancellationToken = default)

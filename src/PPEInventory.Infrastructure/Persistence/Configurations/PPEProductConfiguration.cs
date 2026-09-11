@@ -44,10 +44,6 @@ public class PPEProductConfiguration
         builder.Property(x => x.Specification)
             .HasMaxLength(250);
 
-        builder.Property(x => x.StockUnit)
-            .IsRequired()
-            .HasMaxLength(30);
-
         builder.Property(x => x.MinimumStock)
             .IsRequired();
 
@@ -70,6 +66,11 @@ public class PPEProductConfiguration
         builder.HasOne(x => x.UpdatedByUser)
             .WithMany()
             .HasForeignKey(x => x.UpdatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.StockUnitOfMeasure)
+            .WithMany()
+            .HasForeignKey(x => x.StockUnitId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

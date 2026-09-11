@@ -49,6 +49,7 @@ public class ProductSupplierRepository
             .AsNoTracking()
             .Include(x => x.PPEProduct)
             .Include(x => x.Supplier)
+            .Include(x => x.PurchaseUnitOfMeasure)
             .Where(x => x.PPEProductId == ppeProductId)
             .OrderByDescending(x => x.IsPreferred)
             .ThenBy(x => x.Supplier.Name)
@@ -80,6 +81,7 @@ public class ProductSupplierRepository
         return await _context.ProductSuppliers
             .AsNoTracking()
             .Include(x => x.PPEProduct)
+            .Include(x => x.PurchaseUnitOfMeasure)
             .Where(x =>
                 x.SupplierId == supplierId &&
                 productIds.Contains(x.PPEProductId) &&

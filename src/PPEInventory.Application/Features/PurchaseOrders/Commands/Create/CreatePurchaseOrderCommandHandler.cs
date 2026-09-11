@@ -149,7 +149,9 @@ public class CreatePurchaseOrderCommandHandler
                         productSupplier.SupplierProductCode,
 
                     PurchaseUnit =
-                        productSupplier.PurchaseUnit,
+    productSupplier
+        .PurchaseUnitOfMeasure
+        .Name,
 
                     UnitsPerPackage =
                         productSupplier.UnitsPerPackage,

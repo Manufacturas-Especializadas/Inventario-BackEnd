@@ -15,17 +15,20 @@ public class CreateProductSupplierCommandHandler
     private readonly IProductSupplierRepository _repository;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IUnitOfMeasureRepository _unitRepository;
 
     public CreateProductSupplierCommandHandler(
         IPPEProductRepository productRepository,
         ISupplierRepository supplierRepository,
         IProductSupplierRepository repository,
+        IUnitOfMeasureRepository unitRepository,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider)
     {
         _productRepository = productRepository;
         _supplierRepository = supplierRepository;
         _repository = repository;
+        _unitRepository = unitRepository;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
     }
@@ -90,6 +93,23 @@ public class CreateProductSupplierCommandHandler
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
 
+        var purchaseUnit =
+    await _unitRepository.GetByIdAsync(
+        request.PurchaseUnitId,
+        cancellationToken);
+
+        if (purchaseUnit is null)
+        {
+            throw new NotFoundException(
+                $"Unit with id '{request.PurchaseUnitId}' was not found.");
+        }
+
+        if (!purchaseUnit.IsActive)
+        {
+            throw new ConflictException(
+                $"Unit '{purchaseUnit.Name}' is inactive.");
+        }
+
         var relation = new ProductSupplier
         {
             PPEProductId = product.Id,
@@ -101,8 +121,7 @@ public class CreateProductSupplierCommandHandler
             PackageBarcode =
                 Normalize(request.PackageBarcode),
 
-            PurchaseUnit =
-                request.PurchaseUnit.Trim(),
+            PurchaseUnitId = purchaseUnit.Id,
 
             UnitsPerPackage =
                 request.UnitsPerPackage,
@@ -141,8 +160,14 @@ public class CreateProductSupplierCommandHandler
             PackageBarcode =
                 relation.PackageBarcode,
 
+            PurchaseUnitId =
+    purchaseUnit.Id,
+
             PurchaseUnit =
-                relation.PurchaseUnit,
+    purchaseUnit.Name,
+
+            PurchaseUnitSymbol =
+    purchaseUnit.Symbol,
 
             UnitsPerPackage =
                 relation.UnitsPerPackage,

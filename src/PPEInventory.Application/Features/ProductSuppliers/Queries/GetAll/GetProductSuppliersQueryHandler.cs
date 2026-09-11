@@ -45,8 +45,14 @@ namespace PPEInventory.Application.Features.ProductSuppliers.Queries.GetAll
         PackageBarcode =
             x.PackageBarcode,
 
+        PurchaseUnitId =
+            x.PurchaseUnitId,
+
         PurchaseUnit =
-            x.PurchaseUnit,
+            x.PurchaseUnitOfMeasure.Name,
+
+        PurchaseUnitSymbol =
+            x.PurchaseUnitOfMeasure.Symbol,
 
         UnitsPerPackage =
             x.UnitsPerPackage,

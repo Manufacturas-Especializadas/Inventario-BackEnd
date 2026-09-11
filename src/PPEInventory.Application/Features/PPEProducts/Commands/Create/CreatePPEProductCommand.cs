@@ -10,7 +10,7 @@ public record CreatePPEProductCommand(
     string? Color,
     string? Model,
     string? Specification,
-    string StockUnit,
+    int StockUnitId,
     int MinimumStock,
     int? DefaultMaxQuantityPerCycle,
     int? ReplacementIntervalDays)

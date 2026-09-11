@@ -14,8 +14,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         string connectionString)
     {
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
 
         services.AddScoped< IDepartmentRepository, DepartmentRepository>();
 
@@ -24,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped< IProductionLineRepository,ProductionLineRepository>();
 
         services.AddScoped< IEmployeeRepository, EmployeeRepository>();
+
         services.AddScoped< IOrganizationalUnitRepository, OrganizationalUnitRepository>();
 
         services.AddScoped< IOrganizationalUnitPPELimitRepository, OrganizationalUnitPPELimitRepository>();
@@ -63,6 +63,10 @@ public static class DependencyInjection
         services.AddScoped<IInventoryAdjustmentRepository, InventoryAdjustmentRepository>();
 
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+        services.AddScoped<IUnitOfMeasureRepository, UnitOfMeasureRepository>();
+
+        services.AddScoped<IProductSizeRepository, ProductSizeRepository>();
 
         return services;
     }

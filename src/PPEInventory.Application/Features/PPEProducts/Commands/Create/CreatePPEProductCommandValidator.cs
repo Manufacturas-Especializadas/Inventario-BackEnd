@@ -29,9 +29,8 @@ public class CreatePPEProductCommandValidator
         RuleFor(x => x.Specification)
             .MaximumLength(250);
 
-        RuleFor(x => x.StockUnit)
-            .NotEmpty()
-            .MaximumLength(30);
+        RuleFor(x => x.StockUnitId)
+            .GreaterThan(0);
 
         RuleFor(x => x.MinimumStock)
             .GreaterThanOrEqualTo(0);

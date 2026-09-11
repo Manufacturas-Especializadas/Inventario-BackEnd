@@ -20,7 +20,7 @@ public class PPEProduct
 
     public string? Specification { get; set; }
 
-    public string StockUnit { get; set; } = string.Empty;
+    public int StockUnitId { get; set; }
 
     public int MinimumStock { get; set; }
 
@@ -43,6 +43,8 @@ public class PPEProduct
     public User CreatedByUser { get; set; } = null!;
 
     public User? UpdatedByUser { get; set; }
+
+    public UnitOfMeasure StockUnitOfMeasure { get; set; } = null!;
 
     public ICollection<InventoryAdjustmentItem> InventoryAdjustmentItems { get; set; }
     = new List<InventoryAdjustmentItem>();
