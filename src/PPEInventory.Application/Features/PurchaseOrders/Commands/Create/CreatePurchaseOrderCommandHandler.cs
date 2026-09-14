@@ -215,6 +215,10 @@ public class CreatePurchaseOrderCommandHandler
             CreatedAt =
                 purchaseOrder.CreatedAt,
 
+            UpdatedAt = purchaseOrder.UpdatedAt,
+            CancelledAt = purchaseOrder.CancelledAt,
+            CancellationReason = purchaseOrder.CancellationReason,
+
             Items = purchaseOrder.Items
                 .Select(item =>
                 {

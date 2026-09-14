@@ -26,4 +26,10 @@ public interface IPurchaseOrderRepository
     Task<PurchaseOrder?> GetByFolioForUpdateAsync(
     string folio,
     CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsBySupplierAndNumberAsync(
+    int supplierId,
+    string purchaseOrderNumber,
+    int excludePurchaseOrderId,
+    CancellationToken cancellationToken = default);
 }

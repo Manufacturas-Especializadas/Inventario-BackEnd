@@ -48,6 +48,8 @@ public class ProductSupplierRepository
         return await _context.ProductSuppliers
             .AsNoTracking()
             .Include(x => x.PPEProduct)
+                .ThenInclude(
+                    x => x.StockUnitOfMeasure)
             .Include(x => x.Supplier)
             .Include(x => x.PurchaseUnitOfMeasure)
             .Where(x => x.PPEProductId == ppeProductId)
@@ -87,6 +89,27 @@ public class ProductSupplierRepository
                 productIds.Contains(x.PPEProductId) &&
                 x.IsActive &&
                 x.PPEProduct.IsActive)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProductSupplier>>
+    GetBySupplierIdAsync(
+        int supplierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ProductSuppliers
+            .AsNoTracking()
+            .Include(x => x.PPEProduct)
+                .ThenInclude(
+                    x => x.StockUnitOfMeasure)
+            .Include(x => x.Supplier)
+            .Include(x => x.PurchaseUnitOfMeasure)
+            .Where(x =>
+                x.SupplierId == supplierId &&
+                x.IsActive &&
+                x.PPEProduct.IsActive)
+            .OrderByDescending(x => x.IsPreferred)
+            .ThenBy(x => x.PPEProduct.Name)
             .ToListAsync(cancellationToken);
     }
 }

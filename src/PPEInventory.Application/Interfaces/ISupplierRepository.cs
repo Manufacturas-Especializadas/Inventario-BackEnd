@@ -11,8 +11,17 @@ public interface ISupplierRepository
         int id,
         CancellationToken cancellationToken = default);
 
+    Task<Supplier?> GetByIdForUpdateAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByNameAsync(
         string name,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsByNameAsync(
+        string name,
+        int excludeId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(

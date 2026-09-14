@@ -35,6 +35,15 @@ namespace PPEInventory.Application.Features.ProductSuppliers.Queries.GetAll
         PPEProductId = x.PPEProductId,
         Sku = x.PPEProduct.Sku,
         ProductName = x.PPEProduct.Name,
+        StockUnitId = x.PPEProduct.StockUnitId,
+
+        StockUnit = x.PPEProduct
+            .StockUnitOfMeasure
+            .Name,
+
+        StockUnitSymbol = x.PPEProduct
+            .StockUnitOfMeasure
+            .Symbol,
 
         SupplierId = x.SupplierId,
         SupplierName = x.Supplier.Name,

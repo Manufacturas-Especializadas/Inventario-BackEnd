@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
 using PPEInventory.Application.Features.ProductSuppliers.Commands.Create;
-using PPEInventory.Application.Features.ProductSuppliers.Queries.GetAll;
+using PPEInventory.Application.Features.ProductSuppliers.Queries.GetBySupplier;
 namespace PPEInventory.Api.Controllers;
 
 [ApiController]
@@ -55,5 +55,33 @@ public class ProductSuppliersController : ControllerBase
             await _mediator.Send(
                 command,
                 cancellationToken));
+    }
+
+    [HttpGet("by-supplier/{supplierId:int}")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult>
+    GetBySupplier(
+        int supplierId,
+        CancellationToken cancellationToken)
+    {
+        if (supplierId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "El proveedor no es válido."
+                });
+        }
+
+        var result =
+            await _mediator.Send(
+                new GetProductSuppliersBySupplierQuery(
+                    supplierId),
+                cancellationToken);
+
+        return Ok(result);
     }
 }

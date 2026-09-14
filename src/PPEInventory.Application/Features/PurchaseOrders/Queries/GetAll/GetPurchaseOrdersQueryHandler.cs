@@ -62,6 +62,10 @@ public class GetPurchaseOrdersQueryHandler
             CreatedAt =
                 po.CreatedAt,
 
+            UpdatedAt = po.UpdatedAt,
+            CancelledAt = po.CancelledAt,
+            CancellationReason = po.CancellationReason,
+
             Items = po.Items
                 .Select(item =>
                     new PurchaseOrderItemDto

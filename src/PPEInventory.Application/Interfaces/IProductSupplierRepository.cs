@@ -30,4 +30,9 @@ public interface IProductSupplierRepository
         int supplierId,
         IReadOnlyCollection<int> productIds,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ProductSupplier>>
+    GetBySupplierIdAsync(
+        int supplierId,
+        CancellationToken cancellationToken = default);
 }

@@ -59,6 +59,9 @@ public class GetPurchaseOrderByFolioQueryHandler
             CurrencyCode = po.CurrencyCode,
             Notes = po.Notes,
             CreatedAt = po.CreatedAt,
+            UpdatedAt = po.UpdatedAt,
+            CancelledAt = po.CancelledAt,
+            CancellationReason = po.CancellationReason,
 
             Items = po.Items
                 .Select(item =>
