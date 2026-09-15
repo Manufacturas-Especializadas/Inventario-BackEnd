@@ -71,4 +71,6 @@ public class PPEProduct
     public ICollection<OrganizationalUnitPPELimit> OrganizationalUnitLimits { get; set; } 
     = new List<OrganizationalUnitPPELimit>();
     public ProductSize? ProductSize { get; set; }
+    public ICollection<WarehouseProduct> WarehouseProducts { get; set; }
+    = new List<WarehouseProduct>();
 }

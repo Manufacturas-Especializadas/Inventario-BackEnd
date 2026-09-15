@@ -85,4 +85,22 @@ public class InventoryCountRepository
             .OrderBy(x => x.SubmittedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<InventoryCount>>
+    GetDraftCountsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.InventoryCounts
+            .AsNoTracking()
+            .Include(x => x.Warehouse)
+            .Include(x => x.Items)
+                .ThenInclude(x => x.PPEProduct)
+                    .ThenInclude(x => x.Category)
+            .Where(x =>
+                x.Status ==
+                    InventoryCountStatus.Draft)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
 }

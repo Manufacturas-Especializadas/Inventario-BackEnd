@@ -13,26 +13,28 @@ public class StartInventoryCountCommandHandler
 {
     private readonly IInventoryCountRepository _countRepository;
     private readonly IWarehouseRepository _warehouseRepository;
-    private readonly IPPEProductRepository _productRepository;
+    private readonly IWarehouseProductRepository _warehouseProductRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
 
+
     public StartInventoryCountCommandHandler(
         IInventoryCountRepository countRepository,
         IWarehouseRepository warehouseRepository,
-        IPPEProductRepository productRepository,
+        IWarehouseProductRepository warehouseProductRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider)
     {
         _countRepository = countRepository;
         _warehouseRepository = warehouseRepository;
-        _productRepository = productRepository;
+        _warehouseProductRepository = warehouseProductRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
     }
+
 
     public async Task<InventoryCountDto> Handle(
         StartInventoryCountCommand command,
@@ -55,6 +57,7 @@ public class StartInventoryCountCommandHandler
                 $"Warehouse '{warehouse.Name}' is inactive.");
         }
 
+
         if (await _countRepository.HasOpenCountAsync(
             warehouse.Id,
             cancellationToken))
@@ -63,54 +66,52 @@ public class StartInventoryCountCommandHandler
                 $"Warehouse '{warehouse.Name}' already has an open inventory count.");
         }
 
-        var products =
-            await _productRepository.GetAllAsync(
-                cancellationToken);
 
-        var activeProducts =
-            products
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.Name)
-                .ToArray();
+        var warehouseProducts =
+            await _warehouseProductRepository
+                .GetActiveByWarehouseIdAsync(
+                    warehouse.Id,
+                    cancellationToken);
 
-        if (activeProducts.Length == 0)
+
+        if (warehouseProducts.Count == 0)
         {
             throw new ConflictException(
-                "There are no active PPE products to count.");
+                $"Warehouse '{warehouse.Name}' has no active products configured for inventory counting.");
         }
 
-        var userId = _currentUser.UserId
+
+        var userId =
+            _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
+
 
         var count =
             new InventoryCount
             {
-                WarehouseId =
-                    warehouse.Id,
+                WarehouseId = warehouse.Id,
 
-                Status =
-                    InventoryCountStatus.Draft,
+                Status = InventoryCountStatus.Draft,
 
-                Notes =
-                    Normalize(command.Notes),
+                Notes = Normalize(command.Notes),
 
-                CreatedByUserId =
-                    userId,
+                CreatedByUserId = userId,
 
-                CreatedAt =
-                    _dateTimeProvider.UtcNow
+                CreatedAt = _dateTimeProvider.UtcNow
             };
 
-        foreach (var product in activeProducts)
+
+        foreach (var warehouseProduct in warehouseProducts)
         {
             count.Items.Add(
                 new InventoryCountItem
                 {
                     PPEProductId =
-                        product.Id
+                        warehouseProduct.PPEProductId
                 });
         }
+
 
         await _countRepository.AddAsync(
             count,
@@ -119,19 +120,25 @@ public class StartInventoryCountCommandHandler
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
-        // Las navegaciones utilizadas por el mapping
-        // las asignamos porque acabamos de crear el objeto.
+
+        // Navegaciones necesarias para mapear inmediatamente
+        // el conteo recién creado al DTO.
         count.Warehouse = warehouse;
 
         foreach (var item in count.Items)
         {
             item.PPEProduct =
-                activeProducts.First(
-                    x => x.Id == item.PPEProductId);
+                warehouseProducts
+                    .First(x =>
+                        x.PPEProductId ==
+                        item.PPEProductId)
+                    .PPEProduct;
         }
+
 
         return count.ToDto();
     }
+
 
     private static string? Normalize(
         string? value)

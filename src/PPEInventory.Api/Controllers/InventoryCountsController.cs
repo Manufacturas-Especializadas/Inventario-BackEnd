@@ -7,6 +7,7 @@ using PPEInventory.Application.Features.InventoryCounts.Commands.Post;
 using PPEInventory.Application.Features.InventoryCounts.Commands.Start;
 using PPEInventory.Application.Features.InventoryCounts.Commands.Submit;
 using PPEInventory.Application.Features.InventoryCounts.Queries.GetByFolio;
+using PPEInventory.Application.Features.InventoryCounts.Queries.GetDrafts;
 using PPEInventory.Application.Features.InventoryCounts.Queries.GetPendingReview;
 
 namespace PPEInventory.Api.Controllers;
@@ -21,6 +22,18 @@ public class InventoryCountsController : ControllerBase
         IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpGet("drafts")]
+    [Authorize(
+    Policy = AuthorizationPolicies.Warehouse)]
+    public async Task<IActionResult> GetDrafts(
+    CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                new GetDraftInventoryCountsQuery(),
+                cancellationToken));
     }
 
     [HttpGet("{folio}")]
