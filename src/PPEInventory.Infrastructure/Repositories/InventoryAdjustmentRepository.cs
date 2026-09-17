@@ -40,4 +40,55 @@ public class InventoryAdjustmentRepository
                 x => x.Folio == folio,
                 cancellationToken);
     }
+
+    public async Task<IReadOnlyList<InventoryAdjustment>>
+    GetFilteredAsync(
+        int? warehouseId,
+        DateTime? createdFrom,
+        DateTime? createdToExclusive,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            _context.InventoryAdjustments
+                .AsNoTracking()
+                .Include(x => x.Warehouse)
+                .Include(x => x.CreatedByUser)
+                    .ThenInclude(x => x.Employee)
+                .AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            query =
+                query.Where(
+                    x =>
+                        x.WarehouseId ==
+                        warehouseId.Value);
+        }
+
+        if (createdFrom.HasValue)
+        {
+            query =
+                query.Where(
+                    x =>
+                        x.CreatedAt >=
+                        createdFrom.Value);
+        }
+
+        if (createdToExclusive.HasValue)
+        {
+            query =
+                query.Where(
+                    x =>
+                        x.CreatedAt <
+                        createdToExclusive.Value);
+        }
+
+        return await query
+            .OrderByDescending(
+                x => x.CreatedAt)
+            .ThenByDescending(
+                x => x.Id)
+            .ToListAsync(
+                cancellationToken);
+    }
 }

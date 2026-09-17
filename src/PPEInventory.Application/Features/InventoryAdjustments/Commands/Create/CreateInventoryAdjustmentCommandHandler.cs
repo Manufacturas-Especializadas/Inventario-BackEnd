@@ -19,6 +19,9 @@ public class CreateInventoryAdjustmentCommandHandler
     private readonly IWarehouseRepository
         _warehouseRepository;
 
+    private readonly IWarehouseProductRepository
+    _warehouseProductRepository;
+
     private readonly IPPEProductRepository
         _productRepository;
 
@@ -40,6 +43,7 @@ public class CreateInventoryAdjustmentCommandHandler
     public CreateInventoryAdjustmentCommandHandler(
         IInventoryAdjustmentRepository adjustmentRepository,
         IWarehouseRepository warehouseRepository,
+        IWarehouseProductRepository warehouseProductRepository,
         IPPEProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IAuditLogRepository auditLogRepository,
@@ -49,6 +53,7 @@ public class CreateInventoryAdjustmentCommandHandler
     {
         _adjustmentRepository = adjustmentRepository;
         _warehouseRepository = warehouseRepository;
+        _warehouseProductRepository = warehouseProductRepository;
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _auditLogRepository = auditLogRepository;
@@ -131,6 +136,32 @@ public class CreateInventoryAdjustmentCommandHandler
             {
                 throw new ConflictException(
                     $"Inactive PPE product(s): {string.Join(", ", inactiveProducts)}.");
+            }
+
+            var warehouseProducts =
+    await _warehouseProductRepository
+        .GetActiveByWarehouseIdAsync(
+            warehouse.Id,
+            cancellationToken);
+
+            var configuredProductIds =
+                warehouseProducts
+                    .Select(x => x.PPEProductId)
+                    .ToHashSet();
+
+            var notConfiguredProducts =
+                products
+                    .Where(x =>
+                        !configuredProductIds.Contains(
+                            x.Id))
+                    .Select(x => x.Sku)
+                    .ToArray();
+
+            if (notConfiguredProducts.Length > 0)
+            {
+                throw new ConflictException(
+                    $"PPE product(s) are not configured as active for warehouse '{warehouse.Name}': " +
+                    $"{string.Join(", ", notConfiguredProducts)}.");
             }
 
             var balances =
