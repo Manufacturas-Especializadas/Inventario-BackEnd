@@ -21,4 +21,8 @@ public interface IWarehouseRepository
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Warehouse>> GetByIdsAsync(
+    IReadOnlyCollection<int> ids,
+    CancellationToken cancellationToken = default);
 }

@@ -30,4 +30,15 @@ public interface IWarehouseProductRepository
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Warehouse>>
+        GetWarehousesSupportingProductsAsync(
+        IReadOnlyCollection<int> ppeProductIds,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<WarehouseProduct>>
+    GetByWarehousesAndProductsAsync(
+        IReadOnlyCollection<int> warehouseIds,
+        IReadOnlyCollection<int> ppeProductIds,
+        CancellationToken cancellationToken = default);
 }

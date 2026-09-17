@@ -7,6 +7,7 @@ using PPEInventory.Application.Features.PurchaseOrders.Commands.Create;
 using PPEInventory.Application.Features.PurchaseOrders.Commands.Update;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetAll;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetByFolio;
+using PPEInventory.Application.Features.PurchaseOrders.Queries.GetReceivingWarehouses;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -42,6 +43,22 @@ public class PurchaseOrdersController : ControllerBase
         return Ok(
             await _mediator.Send(
                 new GetPurchaseOrderByFolioQuery(
+                    folio),
+                cancellationToken));
+    }
+
+    [HttpGet("{folio}/receiving-warehouses")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult>
+    GetReceivingWarehouses(
+        string folio,
+        CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                new GetReceivingWarehousesQuery(
                     folio),
                 cancellationToken));
     }

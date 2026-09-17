@@ -60,6 +60,16 @@ public class InventoryRepository
                 .Include(x => x.Warehouse)
                 .Include(x => x.PPEProduct)
                     .ThenInclude(x => x.Category)
+                    .Where(x =>
+                 x.Warehouse.IsActive &&
+                    x.PPEProduct.IsActive &&
+                    _context.WarehouseProducts.Any(
+                        warehouseProduct =>
+                            warehouseProduct.WarehouseId ==
+                                x.WarehouseId &&
+                            warehouseProduct.PPEProductId ==
+                                x.PPEProductId &&
+                            warehouseProduct.IsActive))
                 .AsQueryable();
 
         if (warehouseId.HasValue)

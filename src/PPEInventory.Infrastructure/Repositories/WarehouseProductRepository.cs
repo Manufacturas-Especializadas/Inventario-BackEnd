@@ -100,4 +100,67 @@ public class WarehouseProductRepository
         return _context.SaveChangesAsync(
             cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Warehouse>>
+    GetWarehousesSupportingProductsAsync(
+        IReadOnlyCollection<int> ppeProductIds,
+        CancellationToken cancellationToken = default)
+    {
+        var productIds =
+            ppeProductIds
+                .Distinct()
+                .ToArray();
+
+        if (productIds.Length == 0)
+        {
+            return Array.Empty<Warehouse>();
+        }
+
+        var warehouseIds =
+            await _context.WarehouseProducts
+                .AsNoTracking()
+                .Where(x =>
+                    x.IsActive &&
+                    x.Warehouse.IsActive &&
+                    x.PPEProduct.IsActive &&
+                    productIds.Contains(
+                        x.PPEProductId))
+                .GroupBy(x =>
+                    x.WarehouseId)
+                .Where(group =>
+                    group
+                        .Select(x =>
+                            x.PPEProductId)
+                        .Distinct()
+                        .Count() ==
+                    productIds.Length)
+                .Select(group =>
+                    group.Key)
+                .ToListAsync(
+                    cancellationToken);
+
+        return await _context.Warehouses
+            .AsNoTracking()
+            .Where(x =>
+                warehouseIds.Contains(x.Id))
+            .OrderBy(x => x.Name)
+            .ToListAsync(
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<WarehouseProduct>>
+    GetByWarehousesAndProductsAsync(
+        IReadOnlyCollection<int> warehouseIds,
+        IReadOnlyCollection<int> ppeProductIds,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.WarehouseProducts
+            .Include(x => x.Warehouse)
+            .Include(x => x.PPEProduct)
+            .Where(x =>
+                warehouseIds.Contains(x.WarehouseId) &&
+                ppeProductIds.Contains(x.PPEProductId))
+            .ToListAsync(cancellationToken);
+    }
+
 }

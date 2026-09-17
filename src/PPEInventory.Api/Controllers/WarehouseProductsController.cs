@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Features.WarehouseProducts.Commands.BulkAssign;
 using PPEInventory.Application.Features.WarehouseProducts.Commands.ChangeStatus;
 using PPEInventory.Application.Features.WarehouseProducts.Commands.Create;
 using PPEInventory.Application.Features.WarehouseProducts.Queries.GetByWarehouse;
@@ -22,8 +23,7 @@ public class WarehouseProductsController : ControllerBase
 
 
     [HttpGet("by-warehouse/{warehouseId:int}")]
-    [Authorize(
-        Policy = AuthorizationPolicies.Viewer)]
+    [Authorize(Policy = AuthorizationPolicies.Viewer)]
     public async Task<IActionResult> GetByWarehouse(
         int warehouseId,
         CancellationToken cancellationToken)
@@ -48,8 +48,7 @@ public class WarehouseProductsController : ControllerBase
 
 
     [HttpPost]
-    [Authorize(
-        Policy = AuthorizationPolicies.Administrator)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Create(
         CreateWarehouseProductCommand command,
         CancellationToken cancellationToken)
@@ -62,8 +61,7 @@ public class WarehouseProductsController : ControllerBase
 
 
     [HttpPut("{warehouseId:int}/{ppeProductId:int}/status")]
-    [Authorize(
-        Policy = AuthorizationPolicies.Administrator)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> ChangeStatus(
         int warehouseId,
         int ppeProductId,
@@ -87,6 +85,18 @@ public class WarehouseProductsController : ControllerBase
                     warehouseId,
                     ppeProductId,
                     request.IsActive),
+                cancellationToken));
+    }
+
+    [HttpPost("bulk-assign")]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> BulkAssign(
+    BulkAssignWarehouseProductsCommand command,
+    CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                command,
                 cancellationToken));
     }
 }
