@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Features.ProductSuppliers.Commands.ChangeStatus;
 using PPEInventory.Application.Features.ProductSuppliers.Commands.Create;
 using PPEInventory.Application.Features.ProductSuppliers.Queries.GetBySupplier;
 namespace PPEInventory.Api.Controllers;
@@ -84,4 +85,35 @@ public class ProductSuppliersController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPut("{ppeProductId:int}/{supplierId:int}/status")]
+    [Authorize(
+    Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> ChangeStatus(
+    int ppeProductId,
+    int supplierId,
+    ChangeProductSupplierStatusRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (ppeProductId <= 0 ||
+            supplierId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "El producto o proveedor no es válido."
+                });
+        }
+
+        return Ok(
+            await _mediator.Send(
+                new ChangeProductSupplierStatusCommand(
+                    ppeProductId,
+                    supplierId,
+                    request.IsActive),
+                cancellationToken));
+    }
+    public record ChangeProductSupplierStatusRequest(
+    bool IsActive);
 }
