@@ -103,4 +103,11 @@ public class InventoryCountRepository
             .ToListAsync(cancellationToken);
     }
 
+    public void Remove(
+    InventoryCount inventoryCount)
+    {
+        _context.InventoryCounts.Remove(
+            inventoryCount);
+    }
+
 }

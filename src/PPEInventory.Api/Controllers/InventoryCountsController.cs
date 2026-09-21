@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Features.InventoryCounts.Commands.Cancel;
 using PPEInventory.Application.Features.InventoryCounts.Commands.CaptureItem;
+using PPEInventory.Application.Features.InventoryCounts.Commands.DeleteDraft;
 using PPEInventory.Application.Features.InventoryCounts.Commands.Post;
 using PPEInventory.Application.Features.InventoryCounts.Commands.Start;
 using PPEInventory.Application.Features.InventoryCounts.Commands.Submit;
@@ -101,6 +103,21 @@ public class InventoryCountsController : ControllerBase
                     folio),
                 cancellationToken));
     }
+    [HttpPost("{folio}/cancel")]
+    [Authorize(
+    Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> Cancel(
+    string folio,
+    CancelInventoryCountRequest request,
+    CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                new CancelInventoryCountCommand(
+                    folio,
+                    request.Reason),
+                cancellationToken));
+    }
 
     [HttpPost("{folio}/post")]
     [Authorize(Policy = AuthorizationPolicies.Administrator)]
@@ -113,5 +130,20 @@ public class InventoryCountsController : ControllerBase
                 new PostInventoryCountCommand(
                     folio),
                 cancellationToken));
+    }
+
+    [HttpDelete("{folio}")]
+    [Authorize(
+    Policy = AuthorizationPolicies.Warehouse)]
+    public async Task<IActionResult> DeleteDraft(
+    string folio,
+    CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new DeleteDraftInventoryCountCommand(
+                folio),
+            cancellationToken);
+
+        return NoContent();
     }
 }
