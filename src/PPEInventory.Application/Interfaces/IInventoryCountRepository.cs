@@ -25,6 +25,9 @@ public interface IInventoryCountRepository
     Task<IReadOnlyList<InventoryCount>>
     GetDraftCountsAsync(
         CancellationToken cancellationToken = default);
+    Task<bool> HasDraftCountAsync(
+    int warehouseId,
+    CancellationToken cancellationToken = default);
 
     void Remove(InventoryCount inventoryCount);
 }

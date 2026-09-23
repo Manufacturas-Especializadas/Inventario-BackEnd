@@ -56,16 +56,20 @@ public class InventoryCountRepository
     }
 
     public Task<InventoryCount?> GetByFolioForUpdateAsync(
-        string folio,
-        CancellationToken cancellationToken = default)
+    string folio,
+    CancellationToken cancellationToken = default)
     {
         return _context.InventoryCounts
+            .FromSqlInterpolated($"""
+            SELECT *
+            FROM InventoryCounts WITH (UPDLOCK, HOLDLOCK)
+            WHERE Folio = {folio}
+            """)
             .Include(x => x.Warehouse)
             .Include(x => x.Items)
                 .ThenInclude(x => x.PPEProduct)
                     .ThenInclude(x => x.Category)
             .FirstOrDefaultAsync(
-                x => x.Folio == folio,
                 cancellationToken);
     }
 
@@ -101,6 +105,17 @@ public class InventoryCountRepository
                     InventoryCountStatus.Draft)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> HasDraftCountAsync(
+    int warehouseId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.InventoryCounts.AnyAsync(
+            x =>
+                x.WarehouseId == warehouseId &&
+                x.Status == InventoryCountStatus.Draft,
+            cancellationToken);
     }
 
     public void Remove(

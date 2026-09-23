@@ -17,19 +17,22 @@ public class DeliverPPERequestCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IInventoryCountRepository _inventoryCountRepository;
 
     public DeliverPPERequestCommandHandler(
         IPPERequestRepository requestRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IInventoryCountRepository inventoryCountRepository)
     {
         _requestRepository = requestRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _inventoryCountRepository = inventoryCountRepository;
     }
 
     public async Task<DeliverPPERequestResultDto> Handle(
@@ -93,6 +96,15 @@ public class DeliverPPERequestCommandHandler
             {
                 throw new ConflictException(
                     $"Warehouse '{ppeRequest.Warehouse.Name}' is inactive.");
+            }
+
+            if (await _inventoryCountRepository
+                    .HasDraftCountAsync(
+                        ppeRequest.WarehouseId,
+                        cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{ppeRequest.Warehouse.Name}' has an inventory count in progress and cannot deliver inventory until the count is submitted or deleted.");
             }
 
             if (ppeRequest.Items.Count == 0)

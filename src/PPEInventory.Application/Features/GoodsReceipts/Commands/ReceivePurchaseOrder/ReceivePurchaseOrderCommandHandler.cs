@@ -19,6 +19,7 @@ public class ReceivePurchaseOrderCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IInventoryCountRepository _inventoryCountRepository;
 
     public ReceivePurchaseOrderCommandHandler(
         IPurchaseOrderRepository purchaseOrderRepository,
@@ -28,7 +29,8 @@ public class ReceivePurchaseOrderCommandHandler
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IInventoryCountRepository inventoryCountRepository)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _goodsReceiptRepository = goodsReceiptRepository;
@@ -38,6 +40,7 @@ public class ReceivePurchaseOrderCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _inventoryCountRepository = inventoryCountRepository;
     }
 
     public async Task<GoodsReceiptDto> Handle(
@@ -103,6 +106,15 @@ public class ReceivePurchaseOrderCommandHandler
             {
                 throw new ConflictException(
                     $"Warehouse '{warehouse.Name}' is inactive.");
+            }
+
+            if (await _inventoryCountRepository
+                .HasDraftCountAsync(
+                    warehouse.Id,
+                    cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{warehouse.Name}' has an inventory count in progress and cannot receive inventory until the count is submitted or deleted.");
             }
 
             if (purchaseOrder.Items.Count == 0)

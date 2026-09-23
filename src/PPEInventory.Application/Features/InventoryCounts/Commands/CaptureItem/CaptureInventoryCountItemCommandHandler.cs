@@ -28,83 +28,101 @@ public class CaptureInventoryCountItemCommandHandler
     }
 
     public async Task<InventoryCountItemDto> Handle(
-        CaptureInventoryCountItemCommand command,
-        CancellationToken cancellationToken)
+    CaptureInventoryCountItemCommand command,
+    CancellationToken cancellationToken)
     {
         var folio =
             command.Folio.Trim().ToUpperInvariant();
-
-        var count =
-            await _repository.GetByFolioForUpdateAsync(
-                folio,
-                cancellationToken);
-
-        if (count is null)
-        {
-            throw new NotFoundException(
-                $"Inventory count '{folio}' was not found.");
-        }
-
-        if (count.Status !=
-            InventoryCountStatus.Draft)
-        {
-            throw new ConflictException(
-                $"Inventory count '{folio}' cannot be modified because its current status is '{count.Status}'.");
-        }
-
-        var item =
-            count.Items.FirstOrDefault(
-                x =>
-                    x.PPEProductId ==
-                    command.PPEProductId);
-
-        if (item is null)
-        {
-            throw new NotFoundException(
-                $"Product with id '{command.PPEProductId}' is not part of inventory count '{folio}'.");
-        }
 
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
 
-        item.CountedQuantity =
-            command.CountedQuantity;
+        await using var transaction =
+            await _unitOfWork
+                .BeginSerializableTransactionAsync(
+                    cancellationToken);
 
-        item.CountedByUserId =
-            userId;
-
-        item.CountedAt =
-            _dateTimeProvider.UtcNow;
-
-        await _unitOfWork.SaveChangesAsync(
-            cancellationToken);
-
-        return new InventoryCountItemDto
+        try
         {
-            Id = item.Id,
+            var count =
+                await _repository
+                    .GetByFolioForUpdateAsync(
+                        folio,
+                        cancellationToken);
 
-            PPEProductId =
-                item.PPEProductId,
+            if (count is null)
+            {
+                throw new NotFoundException(
+                    $"Inventory count '{folio}' was not found.");
+            }
 
-            Sku =
-                item.PPEProduct.Sku,
+            if (count.Status !=
+                InventoryCountStatus.Draft)
+            {
+                throw new ConflictException(
+                    $"Inventory count '{folio}' cannot be modified because its current status is '{count.Status}'.");
+            }
 
-            ProductName =
-                item.PPEProduct.Name,
+            var item =
+                count.Items.FirstOrDefault(
+                    x =>
+                        x.PPEProductId ==
+                        command.PPEProductId);
 
-            CategoryName =
-                item.PPEProduct.Category.Name,
+            if (item is null)
+            {
+                throw new NotFoundException(
+                    $"Product with id '{command.PPEProductId}' is not part of inventory count '{folio}'.");
+            }
 
-            CountedQuantity =
-                item.CountedQuantity,
+            item.CountedQuantity =
+                command.CountedQuantity;
 
-            // Blind count
-            SystemQuantity = null,
-            Variance = null,
+            item.CountedByUserId =
+                userId;
 
-            CountedAt =
-                item.CountedAt
-        };
+            item.CountedAt =
+                _dateTimeProvider.UtcNow;
+
+            await _unitOfWork.SaveChangesAsync(
+                cancellationToken);
+
+            await transaction.CommitAsync(
+                cancellationToken);
+
+            return new InventoryCountItemDto
+            {
+                Id = item.Id,
+
+                PPEProductId =
+                    item.PPEProductId,
+
+                Sku =
+                    item.PPEProduct.Sku,
+
+                ProductName =
+                    item.PPEProduct.Name,
+
+                CategoryName =
+                    item.PPEProduct.Category.Name,
+
+                CountedQuantity =
+                    item.CountedQuantity,
+
+                SystemQuantity = null,
+                Variance = null,
+
+                CountedAt =
+                    item.CountedAt
+            };
+        }
+        catch
+        {
+            await transaction.RollbackAsync(
+                cancellationToken);
+
+            throw;
+        }
     }
 }

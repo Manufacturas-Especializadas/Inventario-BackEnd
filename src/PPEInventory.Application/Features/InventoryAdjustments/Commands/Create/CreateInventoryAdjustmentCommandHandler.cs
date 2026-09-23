@@ -40,6 +40,9 @@ public class CreateInventoryAdjustmentCommandHandler
     private readonly IDateTimeProvider
         _dateTimeProvider;
 
+    private readonly IInventoryCountRepository
+    _inventoryCountRepository;
+
     public CreateInventoryAdjustmentCommandHandler(
         IInventoryAdjustmentRepository adjustmentRepository,
         IWarehouseRepository warehouseRepository,
@@ -49,7 +52,8 @@ public class CreateInventoryAdjustmentCommandHandler
         IAuditLogRepository auditLogRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IInventoryCountRepository inventoryCountRepository)
     {
         _adjustmentRepository = adjustmentRepository;
         _warehouseRepository = warehouseRepository;
@@ -60,6 +64,7 @@ public class CreateInventoryAdjustmentCommandHandler
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _inventoryCountRepository = inventoryCountRepository;
     }
 
     public async Task<InventoryAdjustmentDto> Handle(
@@ -96,6 +101,15 @@ public class CreateInventoryAdjustmentCommandHandler
             {
                 throw new ConflictException(
                     $"Warehouse '{warehouse.Name}' is inactive.");
+            }
+
+            if (await _inventoryCountRepository
+                .HasDraftCountAsync(
+                    warehouse.Id,
+                    cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{warehouse.Name}' has an inventory count in progress and cannot be adjusted until the count is submitted or deleted.");
             }
 
             var productIds =

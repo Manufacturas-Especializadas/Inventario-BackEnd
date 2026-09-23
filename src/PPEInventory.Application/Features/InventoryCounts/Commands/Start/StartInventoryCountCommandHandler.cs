@@ -58,15 +58,6 @@ public class StartInventoryCountCommandHandler
         }
 
 
-        if (await _countRepository.HasOpenCountAsync(
-            warehouse.Id,
-            cancellationToken))
-        {
-            throw new ConflictException(
-                $"Warehouse '{warehouse.Name}' already has an open inventory count.");
-        }
-
-
         var warehouseProducts =
             await _warehouseProductRepository
                 .GetActiveByWarehouseIdAsync(
@@ -85,7 +76,6 @@ public class StartInventoryCountCommandHandler
             _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
-
 
         var count =
             new InventoryCount
@@ -112,6 +102,21 @@ public class StartInventoryCountCommandHandler
                 });
         }
 
+        await using var transaction =
+    await _unitOfWork
+        .BeginSerializableTransactionAsync(
+            cancellationToken);
+
+        try
+        {
+
+            if (await _countRepository.HasOpenCountAsync(
+            warehouse.Id,
+            cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{warehouse.Name}' already has an open inventory count.");
+            }
 
         await _countRepository.AddAsync(
             count,
@@ -120,6 +125,17 @@ public class StartInventoryCountCommandHandler
         await _unitOfWork.SaveChangesAsync(
             cancellationToken);
 
+        await transaction.CommitAsync(
+            cancellationToken);
+
+        }
+        catch
+        {
+            await transaction.RollbackAsync(
+                cancellationToken);
+
+            throw;
+        }
 
         // Navegaciones necesarias para mapear inmediatamente
         // el conteo recién creado al DTO.
