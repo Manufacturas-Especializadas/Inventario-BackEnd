@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
 using PPEInventory.Application.Features.InventoryAdjustments.Commands.Create;
 using PPEInventory.Application.Features.InventoryAdjustments.Queries.GetByFolio;
+using PPEInventory.Application.Features.InventoryAdjustments.Queries.GetList;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -29,6 +30,25 @@ public class InventoryAdjustmentsController
         return Ok(
             await _mediator.Send(
                 command,
+                cancellationToken));
+    }
+
+    [HttpGet]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult> Get(
+    [FromQuery] int? warehouseId,
+    [FromQuery] DateOnly? dateFrom,
+    [FromQuery] DateOnly? dateTo,
+    CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                new GetInventoryAdjustmentsQuery(
+                    warehouseId,
+                    dateFrom,
+                    dateTo),
                 cancellationToken));
     }
 

@@ -10,7 +10,7 @@ public class ProductSupplier
 
     public string? PackageBarcode { get; set; }
 
-    public string PurchaseUnit { get; set; } = string.Empty;
+    public int PurchaseUnitId { get; set; }
 
     public int UnitsPerPackage { get; set; }
 
@@ -27,4 +27,6 @@ public class ProductSupplier
     public Supplier Supplier { get; set; } = null!;
 
     public User CreatedByUser { get; set; } = null!;
+
+    public UnitOfMeasure PurchaseUnitOfMeasure { get; set; } = null!;
 }

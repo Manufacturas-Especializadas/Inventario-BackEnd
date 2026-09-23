@@ -38,4 +38,7 @@ public class Warehouse
 
     public ICollection<InventoryMovement> InventoryMovements { get; set; }
         = new List<InventoryMovement>();
+
+    public ICollection<WarehouseProduct> WarehouseProducts { get; set; }
+    = new List<WarehouseProduct>();
 }

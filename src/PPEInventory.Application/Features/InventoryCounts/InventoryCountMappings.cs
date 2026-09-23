@@ -40,6 +40,12 @@ public static class InventoryCountMappings
             PostedAt =
                 count.PostedAt,
 
+            CancelledAt =
+                count.CancelledAt,
+
+            CancellationReason =
+                 count.CancellationReason,
+
             Items =
                 count.Items
                     .OrderBy(x =>

@@ -2,9 +2,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Features.PurchaseOrders.Commands.Cancel;
 using PPEInventory.Application.Features.PurchaseOrders.Commands.Create;
+using PPEInventory.Application.Features.PurchaseOrders.Commands.Update;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetAll;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetByFolio;
+using PPEInventory.Application.Features.PurchaseOrders.Queries.GetReceivingWarehouses;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -44,6 +47,22 @@ public class PurchaseOrdersController : ControllerBase
                 cancellationToken));
     }
 
+    [HttpGet("{folio}/receiving-warehouses")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult>
+    GetReceivingWarehouses(
+        string folio,
+        CancellationToken cancellationToken)
+    {
+        return Ok(
+            await _mediator.Send(
+                new GetReceivingWarehousesQuery(
+                    folio),
+                cancellationToken));
+    }
+
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.Production)]
     public async Task<IActionResult> Create(
@@ -54,5 +73,49 @@ public class PurchaseOrdersController : ControllerBase
             await _mediator.Send(
                 command,
                 cancellationToken));
+    }
+
+    [HttpPut("{folio}")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Production)]
+    public async Task<IActionResult> Update(
+    string folio,
+    UpdatePurchaseOrderRequest request,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _mediator.Send(
+                new UpdatePurchaseOrderCommand(
+                    folio,
+                    request.SupplierId,
+                    request.PurchaseOrderNumber,
+                    request.ConfirmedDeliveryDate,
+                    request.CurrencyCode,
+                    request.Notes,
+                    request.Items),
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+
+    [HttpPut("{folio}/cancel")]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.Production)]
+    public async Task<IActionResult> Cancel(
+        string folio,
+        CancelPurchaseOrderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _mediator.Send(
+                new CancelPurchaseOrderCommand(
+                    folio,
+                    request.Reason),
+                cancellationToken);
+
+        return Ok(result);
     }
 }

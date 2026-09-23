@@ -149,7 +149,9 @@ public class CreatePurchaseOrderCommandHandler
                         productSupplier.SupplierProductCode,
 
                     PurchaseUnit =
-                        productSupplier.PurchaseUnit,
+    productSupplier
+        .PurchaseUnitOfMeasure
+        .Name,
 
                     UnitsPerPackage =
                         productSupplier.UnitsPerPackage,
@@ -212,6 +214,10 @@ public class CreatePurchaseOrderCommandHandler
 
             CreatedAt =
                 purchaseOrder.CreatedAt,
+
+            UpdatedAt = purchaseOrder.UpdatedAt,
+            CancelledAt = purchaseOrder.CancelledAt,
+            CancellationReason = purchaseOrder.CancellationReason,
 
             Items = purchaseOrder.Items
                 .Select(item =>

@@ -32,21 +32,11 @@ public class PPEProductConfiguration
         builder.Property(x => x.Description)
             .HasMaxLength(500);
 
-        builder.Property(x => x.Size)
-            .HasMaxLength(50);
-
-        builder.Property(x => x.Color)
-            .HasMaxLength(50);
-
         builder.Property(x => x.Model)
             .HasMaxLength(100);
 
         builder.Property(x => x.Specification)
             .HasMaxLength(250);
-
-        builder.Property(x => x.StockUnit)
-            .IsRequired()
-            .HasMaxLength(30);
 
         builder.Property(x => x.MinimumStock)
             .IsRequired();
@@ -70,6 +60,21 @@ public class PPEProductConfiguration
         builder.HasOne(x => x.UpdatedByUser)
             .WithMany()
             .HasForeignKey(x => x.UpdatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.StockUnitOfMeasure)
+            .WithMany()
+            .HasForeignKey(x => x.StockUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.ProductSize)
+            .WithMany()
+            .HasForeignKey(x => x.SizeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.ProductColor)
+            .WithMany()
+            .HasForeignKey(x => x.ColorId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

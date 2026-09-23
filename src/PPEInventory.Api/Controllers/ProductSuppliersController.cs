@@ -2,8 +2,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Features.ProductSuppliers.Commands.ChangeStatus;
 using PPEInventory.Application.Features.ProductSuppliers.Commands.Create;
-using PPEInventory.Application.Features.ProductSuppliers.Queries.GetAll;
+using PPEInventory.Application.Features.ProductSuppliers.Queries.GetBySupplier;
 namespace PPEInventory.Api.Controllers;
 
 [ApiController]
@@ -56,4 +57,63 @@ public class ProductSuppliersController : ControllerBase
                 command,
                 cancellationToken));
     }
+
+    [HttpGet("by-supplier/{supplierId:int}")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Viewer)]
+    public async Task<IActionResult>
+    GetBySupplier(
+        int supplierId,
+        CancellationToken cancellationToken)
+    {
+        if (supplierId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "El proveedor no es válido."
+                });
+        }
+
+        var result =
+            await _mediator.Send(
+                new GetProductSuppliersBySupplierQuery(
+                    supplierId),
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPut("{ppeProductId:int}/{supplierId:int}/status")]
+    [Authorize(
+    Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> ChangeStatus(
+    int ppeProductId,
+    int supplierId,
+    ChangeProductSupplierStatusRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (ppeProductId <= 0 ||
+            supplierId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "El producto o proveedor no es válido."
+                });
+        }
+
+        return Ok(
+            await _mediator.Send(
+                new ChangeProductSupplierStatusCommand(
+                    ppeProductId,
+                    supplierId,
+                    request.IsActive),
+                cancellationToken));
+    }
+    public record ChangeProductSupplierStatusRequest(
+    bool IsActive);
 }

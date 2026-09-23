@@ -14,27 +14,33 @@ public class ReceivePurchaseOrderCommandHandler
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IGoodsReceiptRepository _goodsReceiptRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IWarehouseProductRepository _warehouseProductRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IInventoryCountRepository _inventoryCountRepository;
 
     public ReceivePurchaseOrderCommandHandler(
         IPurchaseOrderRepository purchaseOrderRepository,
         IGoodsReceiptRepository goodsReceiptRepository,
         IWarehouseRepository warehouseRepository,
+        IWarehouseProductRepository warehouseProductRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IInventoryCountRepository inventoryCountRepository)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _goodsReceiptRepository = goodsReceiptRepository;
         _warehouseRepository = warehouseRepository;
+        _warehouseProductRepository = warehouseProductRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _inventoryCountRepository = inventoryCountRepository;
     }
 
     public async Task<GoodsReceiptDto> Handle(
@@ -102,10 +108,46 @@ public class ReceivePurchaseOrderCommandHandler
                     $"Warehouse '{warehouse.Name}' is inactive.");
             }
 
+            if (await _inventoryCountRepository
+                .HasDraftCountAsync(
+                    warehouse.Id,
+                    cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{warehouse.Name}' has an inventory count in progress and cannot receive inventory until the count is submitted or deleted.");
+            }
+
             if (purchaseOrder.Items.Count == 0)
             {
                 throw new ConflictException(
                     $"Purchase order '{folio}' does not contain items.");
+            }
+
+            var warehouseProducts =
+    await _warehouseProductRepository
+        .GetActiveByWarehouseIdAsync(
+            warehouse.Id,
+            cancellationToken);
+
+            var configuredProductIds =
+                warehouseProducts
+                    .Select(x => x.PPEProductId)
+                    .ToHashSet();
+
+            var notConfiguredItems =
+                purchaseOrder.Items
+                    .Where(x =>
+                        !configuredProductIds.Contains(
+                            x.PPEProductId))
+                    .Select(x => x.PPEProduct.Sku)
+                    .Distinct()
+                    .ToArray();
+
+            if (notConfiguredItems.Length > 0)
+            {
+                throw new ConflictException(
+                    $"The following products are not configured as active for warehouse '{warehouse.Name}': " +
+                    $"{string.Join(", ", notConfiguredItems)}.");
             }
 
             var now =

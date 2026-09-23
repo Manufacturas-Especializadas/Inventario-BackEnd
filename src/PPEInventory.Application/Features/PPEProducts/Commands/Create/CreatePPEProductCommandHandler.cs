@@ -14,17 +14,26 @@ public class CreatePPEProductCommandHandler
     private readonly IPPECategoryRepository _categoryRepository;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IUnitOfMeasureRepository _unitRepository;
+    private readonly IProductSizeRepository _sizeRepository;
+    private readonly IProductColorRepository _colorRepository;
 
     public CreatePPEProductCommandHandler(
         IPPEProductRepository productRepository,
         IPPECategoryRepository categoryRepository,
+        IUnitOfMeasureRepository unitRepository,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IProductSizeRepository sizeRepository,
+        IProductColorRepository colorRepository)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
+        _unitRepository = unitRepository;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _sizeRepository = sizeRepository;
+        _colorRepository = colorRepository;
     }
 
     public async Task<PPEProductDto> Handle(
@@ -48,6 +57,67 @@ public class CreatePPEProductCommandHandler
                 $"PPE category '{category.Name}' is inactive.");
         }
 
+        var stockUnit =
+    await _unitRepository.GetByIdAsync(
+        request.StockUnitId,
+        cancellationToken);
+
+        if (stockUnit is null)
+        {
+            throw new NotFoundException(
+                $"Unit with id '{request.StockUnitId}' was not found.");
+        }
+
+        if (!stockUnit.IsActive)
+        {
+            throw new ConflictException(
+                $"Unit '{stockUnit.Name}' is inactive.");
+        }
+
+        ProductSize? productSize = null;
+
+        if (request.SizeId.HasValue)
+        {
+            productSize =
+                await _sizeRepository.GetByIdAsync(
+                    request.SizeId.Value,
+                    cancellationToken);
+
+            if (productSize is null)
+            {
+                throw new NotFoundException(
+                    $"Product size with id '{request.SizeId.Value}' was not found.");
+            }
+
+            if (!productSize.IsActive)
+            {
+                throw new ConflictException(
+                    $"Product size '{productSize.Name}' is inactive.");
+            }
+        }
+
+        ProductColor? productColor = null;
+
+        if (request.ColorId.HasValue)
+        {
+            productColor =
+                await _colorRepository.GetByIdAsync(
+                    request.ColorId.Value,
+                    cancellationToken);
+
+            if (productColor is null)
+            {
+                throw new NotFoundException(
+                    $"Product color with id '{request.ColorId.Value}' was not found.");
+            }
+
+            if (!productColor.IsActive)
+            {
+                throw new ConflictException(
+                    $"Product color '{productColor.Name}' is inactive.");
+            }
+        }
+
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
@@ -60,16 +130,16 @@ public class CreatePPEProductCommandHandler
 
             Description = Normalize(request.Description),
 
-            Size = Normalize(request.Size),
+            SizeId = productSize?.Id,
 
-            Color = Normalize(request.Color),
+            ColorId = productColor?.Id,
 
             Model = Normalize(request.Model),
 
             Specification =
                 Normalize(request.Specification),
 
-            StockUnit = request.StockUnit.Trim(),
+            StockUnitId = stockUnit.Id,
 
             MinimumStock =
                 request.MinimumStock,
@@ -107,12 +177,16 @@ public class CreatePPEProductCommandHandler
             Name = product.Name,
             Description = product.Description,
 
-            Size = product.Size,
-            Color = product.Color,
+            SizeId = productSize?.Id,
+            Size = productSize?.Name,
+            ColorId = productColor?.Id,
+            Color = productColor?.Name,
             Model = product.Model,
             Specification = product.Specification,
 
-            StockUnit = product.StockUnit,
+            StockUnitId = stockUnit.Id,
+            StockUnit = stockUnit.Name,
+            StockUnitSymbol = stockUnit.Symbol,
 
             MinimumStock = product.MinimumStock,
 

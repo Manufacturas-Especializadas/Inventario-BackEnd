@@ -681,9 +681,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Color")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int?>("ColorId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -716,9 +715,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ReplacementIntervalDays")
                         .HasColumnType("int");
 
-                    b.Property<string>("Size")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int?>("SizeId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Sku")
                         .IsRequired()
@@ -733,10 +731,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
-                    b.Property<string>("StockUnit")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<int>("StockUnitId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -748,10 +744,16 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("ColorId");
+
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("SizeId");
 
                     b.HasIndex("Sku")
                         .IsUnique();
+
+                    b.HasIndex("StockUnitId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -873,6 +875,86 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.ProductColor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("ProductColors", (string)null);
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.ProductSize", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("ProductSizes", (string)null);
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.ProductSupplier", b =>
                 {
                     b.Property<int>("PPEProductId")
@@ -898,10 +980,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<string>("PurchaseUnit")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<int>("PurchaseUnitId")
+                        .HasColumnType("int");
 
                     b.Property<string>("SupplierProductCode")
                         .HasMaxLength(100)
@@ -918,6 +998,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("PPEProductId")
                         .IsUnique()
                         .HasFilter("[IsPreferred] = 1 AND [IsActive] = 1");
+
+                    b.HasIndex("PurchaseUnitId");
 
                     b.HasIndex("SupplierId");
 
@@ -1298,6 +1380,50 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.ToTable("Suppliers", (string)null);
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UnitOfMeasure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Symbol")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Units", (string)null);
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.User", b =>
                 {
                     b.Property<int>("Id")
@@ -1410,6 +1536,40 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Warehouses", (string)null);
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.WarehouseProduct", b =>
+                {
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PPEProductId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("WarehouseId", "PPEProductId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PPEProductId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("WarehouseProducts", (string)null);
                 });
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.AuditLog", b =>
@@ -1706,9 +1866,25 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.ProductColor", "ProductColor")
+                        .WithMany()
+                        .HasForeignKey("ColorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PPEInventory.Domain.Entities.ProductSize", "ProductSize")
+                        .WithMany()
+                        .HasForeignKey("SizeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.UnitOfMeasure", "StockUnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("StockUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1720,6 +1896,12 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("ProductColor");
+
+                    b.Navigation("ProductSize");
+
+                    b.Navigation("StockUnitOfMeasure");
 
                     b.Navigation("UpdatedByUser");
                 });
@@ -1799,6 +1981,40 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("PPERequest");
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.ProductColor", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.ProductSize", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.ProductSupplier", b =>
                 {
                     b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
@@ -1813,6 +2029,12 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.UnitOfMeasure", "PurchaseUnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("PurchaseUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PPEInventory.Domain.Entities.Supplier", "Supplier")
                         .WithMany("ProductSuppliers")
                         .HasForeignKey("SupplierId")
@@ -1822,6 +2044,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("PPEProduct");
+
+                    b.Navigation("PurchaseUnitOfMeasure");
 
                     b.Navigation("Supplier");
                 });
@@ -1907,6 +2131,23 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("UpdatedByUser");
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UnitOfMeasure", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.User", b =>
                 {
                     b.HasOne("PPEInventory.Domain.Entities.Employee", "Employee")
@@ -1953,6 +2194,39 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("PPEInventory.Domain.Entities.WarehouseProduct", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.PPEProduct", "PPEProduct")
+                        .WithMany("WarehouseProducts")
+                        .HasForeignKey("PPEProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PPEInventory.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("WarehouseProducts")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("PPEProduct");
+
+                    b.Navigation("UpdatedByUser");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.Department", b =>
@@ -2013,6 +2287,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("ProductSuppliers");
 
                     b.Navigation("PurchaseOrderItems");
+
+                    b.Navigation("WarehouseProducts");
                 });
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.PPERequest", b =>
@@ -2065,6 +2341,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("InventoryCounts");
 
                     b.Navigation("InventoryMovements");
+
+                    b.Navigation("WarehouseProducts");
                 });
 #pragma warning restore 612, 618
         }

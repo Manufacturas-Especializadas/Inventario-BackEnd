@@ -80,4 +80,17 @@ public class EmployeeRepository : IEmployeeRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Employee?> GetByIdForUpdateAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Employees
+            .Include(x => x.Department)
+            .Include(x => x.Line)
+            .Include(x => x.OrganizationalUnit)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
 }

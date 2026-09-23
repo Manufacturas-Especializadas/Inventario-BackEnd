@@ -7,6 +7,11 @@ public class ProductSupplierDto
     public string Sku { get; set; } = string.Empty;
 
     public string ProductName { get; set; } = string.Empty;
+    public int StockUnitId { get; set; }
+
+    public string StockUnit { get; set; } = string.Empty;
+
+    public string? StockUnitSymbol { get; set; }
 
     public int SupplierId { get; set; }
 
@@ -16,7 +21,11 @@ public class ProductSupplierDto
 
     public string? PackageBarcode { get; set; }
 
+    public int PurchaseUnitId { get; set; }
+
     public string PurchaseUnit { get; set; } = string.Empty;
+
+    public string? PurchaseUnitSymbol { get; set; }
 
     public int UnitsPerPackage { get; set; }
 

@@ -25,4 +25,15 @@ public interface IUserRepository
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<User>> GetAllWithDetailsAsync(
+    CancellationToken cancellationToken = default);
+
+    Task<User?> GetByIdWithDetailsAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+
+    Task<User?> GetByIdForUpdateWithDetailsAsync(
+    int id,
+    CancellationToken cancellationToken = default);
 }

@@ -61,4 +61,15 @@ public class WarehouseRepository
         return _context.SaveChangesAsync(
             cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Warehouse>> GetByIdsAsync(
+    IReadOnlyCollection<int> ids,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Warehouses
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
 }

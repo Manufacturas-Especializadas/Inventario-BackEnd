@@ -60,4 +60,28 @@ public class SupplierRepository : ISupplierRepository
         await _context.SaveChangesAsync(
             cancellationToken);
     }
+
+    public Task<Supplier?> GetByIdForUpdateAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.Suppliers
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
+
+
+    public Task<bool> ExistsByNameAsync(
+        string name,
+        int excludeId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Suppliers
+            .AnyAsync(
+                x =>
+                    x.Id != excludeId &&
+                    x.Name == name,
+                cancellationToken);
+    }
 }

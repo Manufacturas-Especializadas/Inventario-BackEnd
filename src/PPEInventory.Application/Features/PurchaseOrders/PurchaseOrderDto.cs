@@ -28,6 +28,12 @@ public class PurchaseOrderDto
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+
+    public string? CancellationReason { get; set; }
+
     public IReadOnlyCollection<PurchaseOrderItemDto> Items { get; set; }
         = Array.Empty<PurchaseOrderItemDto>();
 }

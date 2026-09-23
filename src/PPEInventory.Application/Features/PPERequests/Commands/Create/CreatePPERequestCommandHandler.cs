@@ -23,6 +23,7 @@ public class CreatePPERequestCommandHandler
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IOrganizationalUnitRepository _organizationalUnitRepository;
     private readonly IOrganizationalUnitPPELimitRepository _organizationalUnitPPELimitRepository;
+    private readonly IWarehouseProductRepository _warehouseProductRepository;
 
     public CreatePPERequestCommandHandler(
         IEmployeeRepository employeeRepository,
@@ -35,7 +36,8 @@ public class CreatePPERequestCommandHandler
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider,
         IOrganizationalUnitPPELimitRepository organizationalUnitPPELimitRepository,
-        IOrganizationalUnitRepository organizationalUnitRepository)
+        IOrganizationalUnitRepository organizationalUnitRepository,
+        IWarehouseProductRepository warehouseProductRepository)
     {
         _employeeRepository = employeeRepository;
         _warehouseRepository = warehouseRepository;
@@ -48,6 +50,7 @@ public class CreatePPERequestCommandHandler
         _dateTimeProvider = dateTimeProvider;
         _organizationalUnitPPELimitRepository = organizationalUnitPPELimitRepository;
         _organizationalUnitRepository = organizationalUnitRepository;
+        _warehouseProductRepository = warehouseProductRepository;
     }
 
     public async Task<CreatePPERequestResultDto> Handle(
@@ -193,6 +196,36 @@ public class CreatePPERequestCommandHandler
                     $"Inactive PPE product(s): {string.Join(", ", inactiveProducts)}.");
             }
 
+            var configuredWarehouseProducts =
+    await _warehouseProductRepository
+        .GetActiveByWarehouseIdAsync(
+            warehouse.Id,
+            cancellationToken);
+
+            var configuredProductIds =
+                configuredWarehouseProducts
+                    .Select(x => x.PPEProductId)
+                    .ToHashSet();
+
+            var notConfiguredProductIds =
+                productIds
+                    .Where(id =>
+                        !configuredProductIds.Contains(id))
+                    .ToArray();
+
+            if (notConfiguredProductIds.Length > 0)
+            {
+                var notConfiguredSkus =
+                    notConfiguredProductIds
+                        .Select(id =>
+                            productsById[id].Sku)
+                        .ToArray();
+
+                throw new ConflictException(
+                    $"PPE product(s) are not configured for warehouse '{warehouse.Name}': " +
+                    $"{string.Join(", ", notConfiguredSkus)}.");
+            }
+
 
 
             var organizationalUnitIds =
@@ -233,6 +266,20 @@ public class CreatePPERequestCommandHandler
             var balancesByProductId =
                 balances.ToDictionary(
                     x => x.PPEProductId);
+
+            var productsWithoutBalance =
+                productIds
+                    .Where(id =>
+                        !balancesByProductId
+                            .ContainsKey(id))
+                                .ToArray();
+
+            if (productsWithoutBalance.Length > 0)
+            {
+                throw new ConflictException(
+                    $"The following PPE product(s) are not available in warehouse '{warehouse.Name}': " +
+                    $"{string.Join(", ", productsWithoutBalance)}.");
+            }
 
             foreach (var requestItem in request.Items)
             {
@@ -335,6 +382,38 @@ public class CreatePPERequestCommandHandler
                 }
             }
 
+            foreach (var requestItem in request.Items)
+            {
+                var product =
+                    productsById[
+                        requestItem.PPEProductId];
+
+                if (
+                    !balancesByProductId.TryGetValue(
+                        requestItem.PPEProductId,
+                        out var balance)
+                )
+                {
+                    throw new ConflictException(
+                        $"Product '{product.Sku}' has no inventory available in warehouse '{warehouse.Name}'.");
+                }
+
+                var availableQuantity =
+                    balance.OnHandQuantity -
+                    balance.ReservedQuantity;
+
+                if (
+                    availableQuantity <
+                    requestItem.Quantity
+                )
+                {
+                    throw new ConflictException(
+                        $"Product '{product.Sku}' does not have enough available inventory in warehouse '{warehouse.Name}'. " +
+                        $"Available: {availableQuantity}. " +
+                        $"Requested: {requestItem.Quantity}.");
+                }
+            }
+
             var ppeRequest =
                 new PPERequest
                 {
@@ -375,13 +454,32 @@ public class CreatePPERequestCommandHandler
                             requestItem.Quantity,
 
                         AppliedMaxQuantityPerCycle =
-    appliedMaxByProductId[
-        requestItem.PPEProductId],
+                            appliedMaxByProductId[
+                                requestItem.PPEProductId]
                     });
 
                 var balance =
                     balancesByProductId[
                         requestItem.PPEProductId];
+
+                var product =
+                    productsById[
+                        requestItem.PPEProductId];
+
+                var availableQuantity =
+                    balance.OnHandQuantity -
+                    balance.ReservedQuantity;
+
+                if (
+                    requestItem.Quantity >
+                    availableQuantity
+                )
+                {
+                    throw new ConflictException(
+                        $"Product '{product.Sku}' does not have enough available stock in warehouse '{warehouse.Name}'. " +
+                        $"Available: {availableQuantity}. " +
+                        $"Requested: {requestItem.Quantity}.");
+                }
 
                 balance.ReservedQuantity +=
                     requestItem.Quantity;

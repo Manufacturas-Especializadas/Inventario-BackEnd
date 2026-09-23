@@ -17,11 +17,13 @@ public class CreatePPEProductCommandValidator
         RuleFor(x => x.Description)
             .MaximumLength(500);
 
-        RuleFor(x => x.Size)
-            .MaximumLength(50);
+        RuleFor(x => x.SizeId)
+            .GreaterThan(0)
+            .When(x => x.SizeId.HasValue);
 
-        RuleFor(x => x.Color)
-            .MaximumLength(50);
+        RuleFor(x => x.ColorId)
+            .GreaterThan(0)
+            .When(x => x.ColorId.HasValue);
 
         RuleFor(x => x.Model)
             .MaximumLength(100);
@@ -29,9 +31,8 @@ public class CreatePPEProductCommandValidator
         RuleFor(x => x.Specification)
             .MaximumLength(250);
 
-        RuleFor(x => x.StockUnit)
-            .NotEmpty()
-            .MaximumLength(30);
+        RuleFor(x => x.StockUnitId)
+            .GreaterThan(0);
 
         RuleFor(x => x.MinimumStock)
             .GreaterThanOrEqualTo(0);

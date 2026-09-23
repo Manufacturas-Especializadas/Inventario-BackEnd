@@ -12,15 +12,15 @@ public class PPEProduct
 
     public string? Description { get; set; }
 
-    public string? Size { get; set; }
+    public int? SizeId { get; set; }
 
-    public string? Color { get; set; }
+    public int? ColorId { get; set; }
 
     public string? Model { get; set; }
 
     public string? Specification { get; set; }
 
-    public string StockUnit { get; set; } = string.Empty;
+    public int StockUnitId { get; set; }
 
     public int MinimumStock { get; set; }
 
@@ -44,6 +44,9 @@ public class PPEProduct
 
     public User? UpdatedByUser { get; set; }
 
+    public UnitOfMeasure StockUnitOfMeasure { get; set; } = null!;
+    public ProductColor? ProductColor { get; set; }
+
     public ICollection<InventoryAdjustmentItem> InventoryAdjustmentItems { get; set; }
     = new List<InventoryAdjustmentItem>();
 
@@ -60,15 +63,14 @@ public class PPEProduct
     = new List<GoodsReceiptItem>();
 
     public ICollection<InventoryBalance> InventoryBalances { get; set; }
-        = new List<InventoryBalance>();
+    = new List<InventoryBalance>();
 
     public ICollection<InventoryMovement> InventoryMovements { get; set; }
-        = new List<InventoryMovement>();
+    = new List<InventoryMovement>();
 
-    public ICollection<OrganizationalUnitPPELimit>
-    OrganizationalUnitLimits
-    {
-        get;
-        set;
-    } = new List<OrganizationalUnitPPELimit>();
+    public ICollection<OrganizationalUnitPPELimit> OrganizationalUnitLimits { get; set; } 
+    = new List<OrganizationalUnitPPELimit>();
+    public ProductSize? ProductSize { get; set; }
+    public ICollection<WarehouseProduct> WarehouseProducts { get; set; }
+    = new List<WarehouseProduct>();
 }

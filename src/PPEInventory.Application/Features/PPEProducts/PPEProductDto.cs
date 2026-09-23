@@ -14,7 +14,11 @@ public class PPEProductDto
 
     public string? Description { get; set; }
 
+    public int? SizeId { get; set; }
+
     public string? Size { get; set; }
+
+    public int? ColorId { get; set; }
 
     public string? Color { get; set; }
 
@@ -22,7 +26,11 @@ public class PPEProductDto
 
     public string? Specification { get; set; }
 
+    public int StockUnitId { get; set; }
+
     public string StockUnit { get; set; } = string.Empty;
+
+    public string? StockUnitSymbol { get; set; }
 
     public int MinimumStock { get; set; }
 

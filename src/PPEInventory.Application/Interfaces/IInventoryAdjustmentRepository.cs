@@ -11,4 +11,11 @@ public interface IInventoryAdjustmentRepository
     Task<InventoryAdjustment?> GetByFolioAsync(
         string folio,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<InventoryAdjustment>>
+    GetFilteredAsync(
+        int? warehouseId,
+        DateTime? createdFrom,
+        DateTime? createdToExclusive,
+        CancellationToken cancellationToken = default);
 }

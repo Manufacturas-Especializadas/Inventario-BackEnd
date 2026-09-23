@@ -84,4 +84,20 @@ public class PurchaseOrderRepository
                 cancellationToken);
     }
 
+    public Task<bool> ExistsBySupplierAndNumberAsync(
+    int supplierId,
+    string purchaseOrderNumber,
+    int excludePurchaseOrderId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.PurchaseOrders
+            .AnyAsync(
+                x =>
+                    x.Id != excludePurchaseOrderId &&
+                    x.SupplierId == supplierId &&
+                    x.PurchaseOrderNumber ==
+                        purchaseOrderNumber,
+                cancellationToken);
+    }
+
 }

@@ -17,13 +17,9 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Employee> Employees => Set<Employee>();
 
-    public DbSet<OrganizationalUnit>
-    OrganizationalUnits =>
-        Set<OrganizationalUnit>();
+    public DbSet<OrganizationalUnit> OrganizationalUnits => Set<OrganizationalUnit>();
 
-    public DbSet<OrganizationalUnitPPELimit>
-        OrganizationalUnitPPELimits =>
-            Set<OrganizationalUnitPPELimit>();
+    public DbSet<OrganizationalUnitPPELimit> OrganizationalUnitPPELimits => Set<OrganizationalUnitPPELimit>();
 
     public DbSet<User> Users => Set<User>();
 
@@ -40,6 +36,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProductSupplier> ProductSuppliers => Set<ProductSupplier>();
 
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<WarehouseProduct> WarehouseProducts => Set<WarehouseProduct>();
 
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
 
@@ -77,7 +74,8 @@ public class ApplicationDbContext : DbContext
             typeof(ApplicationDbContext).Assembly);
     }
 
-
-
+    public DbSet<UnitOfMeasure> Units => Set<UnitOfMeasure>();
+    public DbSet<ProductSize> ProductSizes => Set<ProductSize>();
+    public DbSet<ProductColor> ProductColors => Set<ProductColor>();
 
 }

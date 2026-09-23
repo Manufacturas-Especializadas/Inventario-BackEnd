@@ -26,10 +26,6 @@ public class ProductSupplierConfiguration
             .HasMaxLength(100)
             .IsUnicode(false);
 
-        builder.Property(x => x.PurchaseUnit)
-            .IsRequired()
-            .HasMaxLength(30);
-
         builder.Property(x => x.UnitsPerPackage)
             .IsRequired();
 
@@ -60,5 +56,10 @@ public class ProductSupplierConfiguration
         builder.HasIndex(x => x.PPEProductId)
             .HasFilter("[IsPreferred] = 1 AND [IsActive] = 1")
             .IsUnique();
+
+        builder.HasOne(x => x.PurchaseUnitOfMeasure)
+            .WithMany()
+            .HasForeignKey(x => x.PurchaseUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -10,16 +10,16 @@ public class GetLowStockQueryHandler
         IReadOnlyList<LowStockDto>>
 {
     private readonly IWarehouseRepository _warehouseRepository;
-    private readonly IPPEProductRepository _productRepository;
+    private readonly IWarehouseProductRepository _warehouseProductRepository;
     private readonly IInventoryRepository _inventoryRepository;
 
     public GetLowStockQueryHandler(
         IWarehouseRepository warehouseRepository,
-        IPPEProductRepository productRepository,
+        IWarehouseProductRepository warehouseProductRepository,
         IInventoryRepository inventoryRepository)
     {
         _warehouseRepository = warehouseRepository;
-        _productRepository = productRepository;
+        _warehouseProductRepository = warehouseProductRepository;
         _inventoryRepository = inventoryRepository;
     }
 
@@ -38,8 +38,9 @@ public class GetLowStockQueryHandler
                 $"Warehouse with id '{request.WarehouseId}' was not found.");
         }
 
-        var products =
-            await _productRepository.GetAllAsync(
+        var warehouseProducts =
+            await _warehouseProductRepository.GetActiveByWarehouseIdAsync(
+                warehouse.Id,
                 cancellationToken);
 
         var balances =
@@ -54,9 +55,9 @@ public class GetLowStockQueryHandler
         var result =
             new List<LowStockDto>();
 
-        foreach (var product in
-            products.Where(x => x.IsActive))
+        foreach (var warehouseProduct in warehouseProducts)
         {
+            var product = warehouseProduct.PPEProduct;
             balanceByProductId.TryGetValue(
                 product.Id,
                 out var balance);

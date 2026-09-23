@@ -48,7 +48,10 @@ public class ProductSupplierRepository
         return await _context.ProductSuppliers
             .AsNoTracking()
             .Include(x => x.PPEProduct)
+                .ThenInclude(
+                    x => x.StockUnitOfMeasure)
             .Include(x => x.Supplier)
+            .Include(x => x.PurchaseUnitOfMeasure)
             .Where(x => x.PPEProductId == ppeProductId)
             .OrderByDescending(x => x.IsPreferred)
             .ThenBy(x => x.Supplier.Name)
@@ -80,11 +83,66 @@ public class ProductSupplierRepository
         return await _context.ProductSuppliers
             .AsNoTracking()
             .Include(x => x.PPEProduct)
+            .Include(x => x.PurchaseUnitOfMeasure)
             .Where(x =>
                 x.SupplierId == supplierId &&
                 productIds.Contains(x.PPEProductId) &&
                 x.IsActive &&
                 x.PPEProduct.IsActive)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ProductSupplier>>
+    GetBySupplierIdAsync(
+        int supplierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ProductSuppliers
+            .AsNoTracking()
+            .Include(x => x.PPEProduct)
+                .ThenInclude(
+                    x => x.StockUnitOfMeasure)
+            .Include(x => x.Supplier)
+            .Include(x => x.PurchaseUnitOfMeasure)
+            .Where(x =>
+                x.SupplierId == supplierId &&
+                x.PPEProduct.IsActive)
+            .OrderByDescending(x => x.IsActive)
+            .ThenByDescending(x => x.IsPreferred)
+            .ThenBy(x => x.PPEProduct.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<ProductSupplier?> GetAsync(
+    int ppeProductId,
+    int supplierId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.ProductSuppliers
+            .Include(x => x.PPEProduct)
+                .ThenInclude(x => x.StockUnitOfMeasure)
+            .Include(x => x.Supplier)
+            .Include(x => x.PurchaseUnitOfMeasure)
+            .FirstOrDefaultAsync(
+                x =>
+                    x.PPEProductId == ppeProductId &&
+                    x.SupplierId == supplierId,
+                cancellationToken);
+    }
+
+
+    public Task<bool> HasOtherPreferredSupplierAsync(
+        int ppeProductId,
+        int supplierId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.ProductSuppliers
+            .AnyAsync(
+                x =>
+                    x.PPEProductId == ppeProductId &&
+                    x.SupplierId != supplierId &&
+                    x.IsPreferred &&
+                    x.IsActive,
+                cancellationToken);
     }
 }

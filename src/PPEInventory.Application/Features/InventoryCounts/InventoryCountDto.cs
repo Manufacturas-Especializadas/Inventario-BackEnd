@@ -23,6 +23,9 @@ public class InventoryCountDto
     public DateTime? SubmittedAt { get; set; }
 
     public DateTime? PostedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+
+    public string? CancellationReason { get; set; }
 
     public IReadOnlyCollection<InventoryCountItemDto> Items { get; set; }
         = Array.Empty<InventoryCountItemDto>();

@@ -19,6 +19,9 @@ public class CreateInventoryAdjustmentCommandHandler
     private readonly IWarehouseRepository
         _warehouseRepository;
 
+    private readonly IWarehouseProductRepository
+    _warehouseProductRepository;
+
     private readonly IPPEProductRepository
         _productRepository;
 
@@ -37,24 +40,31 @@ public class CreateInventoryAdjustmentCommandHandler
     private readonly IDateTimeProvider
         _dateTimeProvider;
 
+    private readonly IInventoryCountRepository
+    _inventoryCountRepository;
+
     public CreateInventoryAdjustmentCommandHandler(
         IInventoryAdjustmentRepository adjustmentRepository,
         IWarehouseRepository warehouseRepository,
+        IWarehouseProductRepository warehouseProductRepository,
         IPPEProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IAuditLogRepository auditLogRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IInventoryCountRepository inventoryCountRepository)
     {
         _adjustmentRepository = adjustmentRepository;
         _warehouseRepository = warehouseRepository;
+        _warehouseProductRepository = warehouseProductRepository;
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _auditLogRepository = auditLogRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
+        _inventoryCountRepository = inventoryCountRepository;
     }
 
     public async Task<InventoryAdjustmentDto> Handle(
@@ -91,6 +101,15 @@ public class CreateInventoryAdjustmentCommandHandler
             {
                 throw new ConflictException(
                     $"Warehouse '{warehouse.Name}' is inactive.");
+            }
+
+            if (await _inventoryCountRepository
+                .HasDraftCountAsync(
+                    warehouse.Id,
+                    cancellationToken))
+            {
+                throw new ConflictException(
+                    $"Warehouse '{warehouse.Name}' has an inventory count in progress and cannot be adjusted until the count is submitted or deleted.");
             }
 
             var productIds =
@@ -131,6 +150,32 @@ public class CreateInventoryAdjustmentCommandHandler
             {
                 throw new ConflictException(
                     $"Inactive PPE product(s): {string.Join(", ", inactiveProducts)}.");
+            }
+
+            var warehouseProducts =
+    await _warehouseProductRepository
+        .GetActiveByWarehouseIdAsync(
+            warehouse.Id,
+            cancellationToken);
+
+            var configuredProductIds =
+                warehouseProducts
+                    .Select(x => x.PPEProductId)
+                    .ToHashSet();
+
+            var notConfiguredProducts =
+                products
+                    .Where(x =>
+                        !configuredProductIds.Contains(
+                            x.Id))
+                    .Select(x => x.Sku)
+                    .ToArray();
+
+            if (notConfiguredProducts.Length > 0)
+            {
+                throw new ConflictException(
+                    $"PPE product(s) are not configured as active for warehouse '{warehouse.Name}': " +
+                    $"{string.Join(", ", notConfiguredProducts)}.");
             }
 
             var balances =

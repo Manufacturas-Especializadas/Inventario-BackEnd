@@ -17,6 +17,15 @@ public interface IProductSupplierRepository
         GetByProductIdAsync(
             int ppeProductId,
             CancellationToken cancellationToken = default);
+    Task<ProductSupplier?> GetAsync(
+    int ppeProductId,
+    int supplierId,
+    CancellationToken cancellationToken = default);
+
+    Task<bool> HasOtherPreferredSupplierAsync(
+        int ppeProductId,
+        int supplierId,
+        CancellationToken cancellationToken = default);
 
     Task AddAsync(
         ProductSupplier productSupplier,
@@ -29,5 +38,10 @@ public interface IProductSupplierRepository
     GetBySupplierAndProductIdsAsync(
         int supplierId,
         IReadOnlyCollection<int> productIds,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ProductSupplier>>
+    GetBySupplierIdAsync(
+        int supplierId,
         CancellationToken cancellationToken = default);
 }

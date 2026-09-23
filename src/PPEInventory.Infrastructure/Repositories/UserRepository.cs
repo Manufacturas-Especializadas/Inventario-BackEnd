@@ -65,4 +65,47 @@ public class UserRepository : IUserRepository
     {
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<User>>
+    GetAllWithDetailsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .Include(x => x.Employee)
+            .Include(x => x.UserRoles)
+                .ThenInclude(x => x.Role)
+            .OrderBy(x => x.Employee.Name)
+            .ThenBy(x => x.Username)
+            .ToListAsync(
+                cancellationToken);
+    }
+
+
+    public async Task<User?> GetByIdWithDetailsAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .Include(x => x.Employee)
+            .Include(x => x.UserRoles)
+                .ThenInclude(x => x.Role)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
+
+    public async Task<User?> GetByIdForUpdateWithDetailsAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .Include(x => x.Employee)
+            .Include(x => x.UserRoles)
+                .ThenInclude(x => x.Role)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
 }
