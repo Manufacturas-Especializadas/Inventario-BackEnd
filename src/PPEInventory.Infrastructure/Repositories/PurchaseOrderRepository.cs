@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Entities;
+using PPEInventory.Domain.Enums;
 using PPEInventory.Infrastructure.Persistence;
 
 namespace PPEInventory.Infrastructure.Repositories;
@@ -76,12 +78,16 @@ public class PurchaseOrderRepository
     CancellationToken cancellationToken = default)
     {
         return _context.PurchaseOrders
-            .Include(x => x.Supplier)
-            .Include(x => x.Items)
-                .ThenInclude(x => x.PPEProduct)
-            .FirstOrDefaultAsync(
-                x => x.Folio == folio,
-                cancellationToken);
+        .FromSqlInterpolated($"""
+            SELECT *
+            FROM PurchaseOrders WITH (UPDLOCK, HOLDLOCK)
+            WHERE Folio = {folio}
+            """)
+        .Include(x => x.Supplier)
+        .Include(x => x.Items)
+            .ThenInclude(x => x.PPEProduct)
+        .FirstOrDefaultAsync(
+            cancellationToken);
     }
 
     public Task<bool> ExistsBySupplierAndNumberAsync(
@@ -98,6 +104,51 @@ public class PurchaseOrderRepository
                     x.PurchaseOrderNumber ==
                         purchaseOrderNumber,
                 cancellationToken);
+    }
+
+    public async Task<PagedResult<PurchaseOrder>> GetPageAsync(
+    PurchaseOrderStatus? status,
+    int pageNumber,
+    int pageSize,
+    CancellationToken cancellationToken = default)
+    {
+        var query =
+            _context.PurchaseOrders
+                .AsNoTracking()
+                .Include(x => x.Supplier)
+                .Include(x => x.Items)
+                    .ThenInclude(x => x.PPEProduct)
+                .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query =
+                query.Where(
+                    x => x.Status == status.Value);
+        }
+
+        var totalCount =
+            await query.CountAsync(
+                cancellationToken);
+
+        var items =
+            await query
+                .OrderByDescending(x => x.OrderDate)
+                .ThenByDescending(x => x.Id)
+                .Skip(
+                    (pageNumber - 1) *
+                    pageSize)
+                .Take(pageSize)
+                .ToListAsync(
+                    cancellationToken);
+
+        return new PagedResult<PurchaseOrder>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
     }
 
 }

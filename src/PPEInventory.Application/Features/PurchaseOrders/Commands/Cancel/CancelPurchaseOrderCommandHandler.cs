@@ -23,145 +23,170 @@ public class CancelPurchaseOrderCommandHandler
         IDateTimeProvider
         _dateTimeProvider;
 
+    private readonly IUnitOfWork _unitOfWork;
+
     public CancelPurchaseOrderCommandHandler(
         IPurchaseOrderRepository repository,
         ICurrentUserService currentUser,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _currentUser = currentUser;
-        _dateTimeProvider =
-            dateTimeProvider;
+        _dateTimeProvider = dateTimeProvider;
+        _unitOfWork = unitOfWork;
     }
 
-    public async Task<PurchaseOrderDto>
-        Handle(
-            CancelPurchaseOrderCommand request,
-            CancellationToken cancellationToken)
+    public async Task<PurchaseOrderDto> Handle(
+    CancelPurchaseOrderCommand request,
+    CancellationToken cancellationToken)
     {
         var folio =
             request.Folio
                 .Trim()
                 .ToUpperInvariant();
 
-        var po =
-            await _repository
-                .GetByFolioForUpdateAsync(
-                    folio,
-                    cancellationToken);
-
-        if (po is null)
-        {
-            throw new NotFoundException(
-                $"Purchase order '{folio}' was not found.");
-        }
-
-        if (po.Status ==
-            PurchaseOrderStatus.Received)
-        {
-            throw new ConflictException(
-                "A received purchase order cannot be cancelled.");
-        }
-
-        if (po.Status ==
-            PurchaseOrderStatus.Cancelled)
-        {
-            throw new ConflictException(
-                "Purchase order is already cancelled.");
-        }
-
         var userId =
             _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
 
-        po.Status =
-            PurchaseOrderStatus.Cancelled;
+        await using var transaction =
+            await _unitOfWork
+                .BeginSerializableTransactionAsync(
+                    cancellationToken);
 
-        po.CancelledAt =
-            _dateTimeProvider.UtcNow;
-
-        po.CancelledByUserId =
-            userId;
-
-        po.CancellationReason =
-            request.Reason.Trim();
-
-        po.UpdatedAt =
-            _dateTimeProvider.UtcNow;
-
-        po.UpdatedByUserId =
-            userId;
-
-        await _repository
-            .SaveChangesAsync(
-                cancellationToken);
-
-        return new PurchaseOrderDto
+        try
         {
-            Id = po.Id,
-            Folio = po.Folio,
+            var po =
+                await _repository
+                    .GetByFolioForUpdateAsync(
+                        folio,
+                        cancellationToken);
 
-            SupplierId = po.SupplierId,
-            SupplierName = po.Supplier.Name,
+            if (po is null)
+            {
+                throw new NotFoundException(
+                    $"Purchase order '{folio}' was not found.");
+            }
 
-            PurchaseOrderNumber =
-                po.PurchaseOrderNumber,
+            if (po.Status ==
+                PurchaseOrderStatus.Received)
+            {
+                throw new ConflictException(
+                    "A received purchase order cannot be cancelled.");
+            }
 
-            Status = po.Status,
+            if (po.Status ==
+                PurchaseOrderStatus.Cancelled)
+            {
+                throw new ConflictException(
+                    "Purchase order is already cancelled.");
+            }
 
-            OrderDate = po.OrderDate,
+            var now =
+                _dateTimeProvider.UtcNow;
 
-            ConfirmedDeliveryDate =
-                po.ConfirmedDeliveryDate,
+            po.Status =
+                PurchaseOrderStatus.Cancelled;
 
-            SupplierConfirmedAt =
-                po.SupplierConfirmedAt,
+            po.CancelledAt =
+                now;
 
-            CurrencyCode =
-                po.CurrencyCode,
+            po.CancelledByUserId =
+                userId;
 
-            Notes = po.Notes,
+            po.CancellationReason =
+                request.Reason.Trim();
 
-            CreatedAt = po.CreatedAt,
-            UpdatedAt = po.UpdatedAt,
+            po.UpdatedAt =
+                now;
 
-            CancelledAt = po.CancelledAt,
+            po.UpdatedByUserId =
+                userId;
 
-            CancellationReason =
-                po.CancellationReason,
+            await _unitOfWork
+                .SaveChangesAsync(
+                    cancellationToken);
 
-            Items = po.Items
-                .Select(item =>
-                    new PurchaseOrderItemDto
-                    {
-                        Id = item.Id,
+            await transaction
+                .CommitAsync(
+                    cancellationToken);
 
-                        PPEProductId =
-                            item.PPEProductId,
+            return new PurchaseOrderDto
+            {
+                Id = po.Id,
+                Folio = po.Folio,
 
-                        Sku =
-                            item.PPEProduct.Sku,
+                SupplierId = po.SupplierId,
+                SupplierName = po.Supplier.Name,
 
-                        ProductName =
-                            item.PPEProduct.Name,
+                PurchaseOrderNumber =
+                    po.PurchaseOrderNumber,
 
-                        SupplierProductCode =
-                            item.SupplierProductCode,
+                Status = po.Status,
 
-                        PurchaseUnit =
-                            item.PurchaseUnit,
+                OrderDate = po.OrderDate,
 
-                        UnitsPerPackage =
-                            item.UnitsPerPackage,
+                ConfirmedDeliveryDate =
+                    po.ConfirmedDeliveryDate,
 
-                        OrderedPurchaseQuantity =
-                            item.OrderedPurchaseQuantity,
+                SupplierConfirmedAt =
+                    po.SupplierConfirmedAt,
 
-                        PurchaseUnitCost =
-                            item.PurchaseUnitCost
-                    })
-                .ToArray()
-        };
+                CurrencyCode =
+                    po.CurrencyCode,
+
+                Notes = po.Notes,
+
+                CreatedAt = po.CreatedAt,
+                UpdatedAt = po.UpdatedAt,
+
+                CancelledAt = po.CancelledAt,
+
+                CancellationReason =
+                    po.CancellationReason,
+
+                Items = po.Items
+                    .Select(item =>
+                        new PurchaseOrderItemDto
+                        {
+                            Id = item.Id,
+
+                            PPEProductId =
+                                item.PPEProductId,
+
+                            Sku =
+                                item.PPEProduct.Sku,
+
+                            ProductName =
+                                item.PPEProduct.Name,
+
+                            SupplierProductCode =
+                                item.SupplierProductCode,
+
+                            PurchaseUnit =
+                                item.PurchaseUnit,
+
+                            UnitsPerPackage =
+                                item.UnitsPerPackage,
+
+                            OrderedPurchaseQuantity =
+                                item.OrderedPurchaseQuantity,
+
+                            PurchaseUnitCost =
+                                item.PurchaseUnitCost
+                        })
+                    .ToArray()
+            };
+        }
+        catch
+        {
+            await transaction
+                .RollbackAsync(
+                    cancellationToken);
+
+            throw;
+        }
     }
 }

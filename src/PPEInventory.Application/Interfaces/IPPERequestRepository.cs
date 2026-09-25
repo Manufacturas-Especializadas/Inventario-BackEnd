@@ -1,4 +1,5 @@
-﻿using PPEInventory.Domain.Entities;
+﻿using PPEInventory.Application.Common.Models;
+using PPEInventory.Domain.Entities;
 
 namespace PPEInventory.Application.Interfaces;
 
@@ -35,5 +36,19 @@ public interface IPPERequestRepository
     int ppeProductId,
     DateTime cycleStart,
     CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<int, int>>
+    GetCommittedNormalQuantitiesInCycleAsync(
+        int requestedForOrganizationalUnitId,
+        IReadOnlyCollection<int> ppeProductIds,
+        DateTime now,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResult<PPERequest>>
+    GetHistoryPageByEmployeeNumberAsync(
+        string employeeNumber,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
 }

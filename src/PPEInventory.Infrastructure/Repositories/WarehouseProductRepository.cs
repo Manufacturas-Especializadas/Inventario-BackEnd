@@ -163,4 +163,23 @@ public class WarehouseProductRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<WarehouseProduct?> GetForUpdateAsync(
+    int warehouseId,
+    int ppeProductId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.WarehouseProducts
+            .FromSqlInterpolated($"""
+            SELECT *
+            FROM WarehouseProducts WITH (UPDLOCK, HOLDLOCK)
+            WHERE WarehouseId = {warehouseId}
+              AND PPEProductId = {ppeProductId}
+            """)
+            .Include(x => x.Warehouse)
+            .Include(x => x.PPEProduct)
+                .ThenInclude(x => x.StockUnitOfMeasure)
+            .FirstOrDefaultAsync(
+                cancellationToken);
+    }
+
 }

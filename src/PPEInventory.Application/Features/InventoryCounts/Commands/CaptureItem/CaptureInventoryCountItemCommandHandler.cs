@@ -46,10 +46,10 @@ public class CaptureInventoryCountItemCommandHandler
         try
         {
             var count =
-                await _repository
-                    .GetByFolioForUpdateAsync(
-                        folio,
-                        cancellationToken);
+    await _repository
+        .GetHeaderByFolioForUpdateAsync(
+            folio,
+            cancellationToken);
 
             if (count is null)
             {
@@ -65,10 +65,11 @@ public class CaptureInventoryCountItemCommandHandler
             }
 
             var item =
-                count.Items.FirstOrDefault(
-                    x =>
-                        x.PPEProductId ==
-                        command.PPEProductId);
+                await _repository
+                    .GetItemAsync(
+                        count.Id,
+                        command.PPEProductId,
+                        cancellationToken);
 
             if (item is null)
             {

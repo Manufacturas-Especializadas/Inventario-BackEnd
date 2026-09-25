@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Interfaces;
 
 namespace PPEInventory.Application.Features.PurchaseOrders.Queries.GetAll;
@@ -6,7 +7,7 @@ namespace PPEInventory.Application.Features.PurchaseOrders.Queries.GetAll;
 public class GetPurchaseOrdersQueryHandler
     : IRequestHandler<
         GetPurchaseOrdersQuery,
-        IReadOnlyList<PurchaseOrderDto>>
+        PagedResult<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _repository;
 
@@ -16,17 +17,27 @@ public class GetPurchaseOrdersQueryHandler
         _repository = repository;
     }
 
-    public async Task<IReadOnlyList<PurchaseOrderDto>> Handle(
-        GetPurchaseOrdersQuery request,
-        CancellationToken cancellationToken)
+    public async Task<PagedResult<PurchaseOrderDto>> Handle(
+    GetPurchaseOrdersQuery request,
+    CancellationToken cancellationToken)
     {
-        var purchaseOrders =
-            await _repository.GetAllAsync(
-                cancellationToken);
+        var result =
+    await _repository.GetPageAsync(
+        request.Status,
+        request.PageNumber,
+        request.PageSize,
+        cancellationToken);
 
-        return purchaseOrders
-            .Select(Map)
-            .ToArray();
+        return new PagedResult<PurchaseOrderDto>
+        {
+            PageNumber = result.PageNumber,
+            PageSize = result.PageSize,
+            TotalCount = result.TotalCount,
+
+            Items = result.Items
+                .Select(Map)
+                .ToArray()
+        };
     }
 
     private static PurchaseOrderDto Map(

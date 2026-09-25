@@ -1,4 +1,6 @@
-﻿using PPEInventory.Domain.Entities;
+﻿using PPEInventory.Application.Common.Models;
+using PPEInventory.Domain.Entities;
+using PPEInventory.Domain.Enums;
 
 namespace PPEInventory.Application.Interfaces;
 
@@ -32,4 +34,11 @@ public interface IPurchaseOrderRepository
     string purchaseOrderNumber,
     int excludePurchaseOrderId,
     CancellationToken cancellationToken = default);
+
+    Task<PagedResult<PurchaseOrder>> GetPageAsync(
+    PurchaseOrderStatus? status,
+    int pageNumber,
+    int pageSize,
+    CancellationToken cancellationToken = default);
+
 }

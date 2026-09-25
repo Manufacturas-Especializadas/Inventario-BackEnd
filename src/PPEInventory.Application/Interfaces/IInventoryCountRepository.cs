@@ -30,4 +30,14 @@ public interface IInventoryCountRepository
     CancellationToken cancellationToken = default);
 
     void Remove(InventoryCount inventoryCount);
+
+    Task<InventoryCount?> GetHeaderByFolioForUpdateAsync(
+    string folio,
+    CancellationToken cancellationToken = default);
+
+    Task<InventoryCountItem?> GetItemAsync(
+        int inventoryCountId,
+        int ppeProductId,
+        CancellationToken cancellationToken = default);
+
 }

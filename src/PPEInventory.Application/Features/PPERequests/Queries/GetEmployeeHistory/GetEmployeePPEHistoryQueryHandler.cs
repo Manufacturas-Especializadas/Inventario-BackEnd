@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using PPEInventory.Application.Common.Exceptions;
+using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Interfaces;
 
 namespace PPEInventory.Application.Features.PPERequests.Queries.GetEmployeeHistory;
@@ -7,7 +8,7 @@ namespace PPEInventory.Application.Features.PPERequests.Queries.GetEmployeeHisto
 public class GetEmployeePPEHistoryQueryHandler
     : IRequestHandler<
         GetEmployeePPEHistoryQuery,
-        IReadOnlyList<PPERequestDto>>
+        PagedResult<PPERequestDto>>
 {
     private readonly IPPERequestRepository _requestRepository;
     private readonly IEmployeeRepository _employeeRepository;
@@ -20,9 +21,9 @@ public class GetEmployeePPEHistoryQueryHandler
         _employeeRepository = employeeRepository;
     }
 
-    public async Task<IReadOnlyList<PPERequestDto>> Handle(
-        GetEmployeePPEHistoryQuery request,
-        CancellationToken cancellationToken)
+    public async Task<PagedResult<PPERequestDto>> Handle(
+    GetEmployeePPEHistoryQuery request,
+    CancellationToken cancellationToken)
     {
         var employeeNumber =
             request.EmployeeNumber.Trim();
@@ -39,15 +40,25 @@ public class GetEmployeePPEHistoryQueryHandler
                 $"Employee '{employeeNumber}' was not found.");
         }
 
-        var requests =
+        var result =
             await _requestRepository
-                .GetHistoryByEmployeeNumberAsync(
+                .GetHistoryPageByEmployeeNumberAsync(
                     employeeNumber,
+                    request.PageNumber,
+                    request.PageSize,
                     cancellationToken);
 
-        return requests
-            .Select(x => x.ToDto())
-            .ToArray();
+        return new PagedResult<PPERequestDto>
+        {
+            PageNumber = result.PageNumber,
+            PageSize = result.PageSize,
+            TotalCount = result.TotalCount,
+
+            Items =
+                result.Items
+                    .Select(x => x.ToDto())
+                    .ToArray()
+        };
     }
 }
 
