@@ -2,12 +2,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PurchaseOrders.Commands.Cancel;
 using PPEInventory.Application.Features.PurchaseOrders.Commands.Create;
 using PPEInventory.Application.Features.PurchaseOrders.Commands.Update;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetAll;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetByFolio;
 using PPEInventory.Application.Features.PurchaseOrders.Queries.GetReceivingWarehouses;
+using PPEInventory.Domain.Enums;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -26,11 +28,17 @@ public class PurchaseOrdersController : ControllerBase
     [HttpGet]
     [Authorize(Policy = AuthorizationPolicies.Viewer)]
     public async Task<IActionResult> GetAll(
-        CancellationToken cancellationToken)
+    PurchaseOrderStatus? status = null,
+    int pageNumber = 1,
+    int pageSize = PaginationParameters.DefaultPageSize,
+    CancellationToken cancellationToken = default)
     {
         return Ok(
             await _mediator.Send(
-                new GetPurchaseOrdersQuery(),
+                new GetPurchaseOrdersQuery(
+                    status,
+                    pageNumber,
+                    pageSize),
                 cancellationToken));
     }
 

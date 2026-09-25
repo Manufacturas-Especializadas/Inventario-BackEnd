@@ -253,8 +253,17 @@ public class CreatePPERequestCommandHandler
             var now =
                 _dateTimeProvider.UtcNow;
 
-            var warnings =
-    new List<PPERequestWarningDto>();
+            var warnings = new List<PPERequestWarningDto>();
+
+            var committedQuantitiesByProductId =
+                isExceptionalRequest
+                    ? new Dictionary<int, int>()
+                    : await _requestRepository
+                        .GetCommittedNormalQuantitiesInCycleAsync(
+                            requestedForOrganizationalUnit.Id,
+                            productIds,
+                            now,
+                            cancellationToken);
 
             var balances =
                 await _inventoryRepository
@@ -346,17 +355,9 @@ public class CreatePPERequestCommandHandler
                     continue;
                 }
 
-                var cycleStart =
-                    now.AddDays(
-                        -product.ReplacementIntervalDays.Value);
-
-                var committedQuantity =
-                    await _requestRepository
-                        .GetCommittedNormalQuantityInCycleAsync(
-                            requestedForOrganizationalUnit.Id,
-                            product.Id,
-                            cycleStart,
-                            cancellationToken);
+                committedQuantitiesByProductId.TryGetValue(
+                    product.Id,
+                    out var committedQuantity);
 
                 var projectedQuantity =
                     committedQuantity +

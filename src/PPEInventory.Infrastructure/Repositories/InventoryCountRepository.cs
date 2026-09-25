@@ -125,4 +125,33 @@ public class InventoryCountRepository
             inventoryCount);
     }
 
+    public Task<InventoryCount?> GetHeaderByFolioForUpdateAsync(
+    string folio,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.InventoryCounts
+            .FromSqlInterpolated($"""
+            SELECT *
+            FROM InventoryCounts WITH (UPDLOCK, HOLDLOCK)
+            WHERE Folio = {folio}
+            """)
+            .FirstOrDefaultAsync(
+                cancellationToken);
+    }
+
+    public Task<InventoryCountItem?> GetItemAsync(
+    int inventoryCountId,
+    int ppeProductId,
+    CancellationToken cancellationToken = default)
+    {
+        return _context.InventoryCountItems
+            .Include(x => x.PPEProduct)
+                .ThenInclude(x => x.Category)
+            .FirstOrDefaultAsync(
+                x =>
+                    x.InventoryCountId == inventoryCountId &&
+                    x.PPEProductId == ppeProductId,
+                cancellationToken);
+    }
+
 }

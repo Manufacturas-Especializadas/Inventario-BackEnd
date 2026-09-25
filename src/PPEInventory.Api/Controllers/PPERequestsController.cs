@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
+using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests.Cancellation;
 using PPEInventory.Application.Features.PPERequests.Commands.Cancel;
 using PPEInventory.Application.Features.PPERequests.Commands.Create;
@@ -116,12 +117,16 @@ public class PPERequestsController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.Viewer)]
     public async Task<IActionResult> GetEmployeeHistory(
     [FromQuery] string employeeNumber,
-    CancellationToken cancellationToken)
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = PaginationParameters.DefaultPageSize,
+    CancellationToken cancellationToken = default)
     {
         return Ok(
             await _mediator.Send(
                 new GetEmployeePPEHistoryQuery(
-                    employeeNumber),
+                    employeeNumber,
+                    pageNumber,
+                    pageSize),
                 cancellationToken));
     }
 }

@@ -216,6 +216,24 @@ public class ReceivePurchaseOrderCommandHandler
             await _unitOfWork.SaveChangesAsync(
                 cancellationToken);
 
+            var productIds =
+                purchaseOrder.Items
+                    .Select(x => x.PPEProductId)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToArray();
+
+            var balances =
+                await _inventoryRepository
+                    .GetBalancesForUpdateAsync(
+                        warehouse.Id,
+                        productIds,
+                        cancellationToken);
+
+            var balancesByProductId =
+                balances.ToDictionary(
+                    x => x.PPEProductId);
+
             var movements =
                 new List<InventoryMovement>();
 
@@ -228,12 +246,9 @@ public class ReceivePurchaseOrderCommandHandler
                         orderItem.OrderedPurchaseQuantity *
                         orderItem.UnitsPerPackage);
 
-                var balance =
-                    await _inventoryRepository
-                        .GetBalanceAsync(
-                            warehouse.Id,
-                            orderItem.PPEProductId,
-                            cancellationToken);
+                balancesByProductId.TryGetValue(
+                    orderItem.PPEProductId,
+                    out var balance);
 
                 if (balance is null)
                 {
@@ -257,6 +272,9 @@ public class ReceivePurchaseOrderCommandHandler
                         .AddBalanceAsync(
                             balance,
                             cancellationToken);
+
+                    balancesByProductId[
+                        orderItem.PPEProductId] = balance;
                 }
                 else
                 {

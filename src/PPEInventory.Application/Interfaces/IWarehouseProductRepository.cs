@@ -41,4 +41,9 @@ public interface IWarehouseProductRepository
         IReadOnlyCollection<int> warehouseIds,
         IReadOnlyCollection<int> ppeProductIds,
         CancellationToken cancellationToken = default);
+
+    Task<WarehouseProduct?> GetForUpdateAsync(
+    int warehouseId,
+    int ppeProductId,
+    CancellationToken cancellationToken = default);
 }
