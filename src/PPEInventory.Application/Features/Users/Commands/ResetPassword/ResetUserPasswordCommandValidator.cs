@@ -12,7 +12,7 @@ public class ResetUserPasswordCommandValidator
 
         RuleFor(x => x.NewPassword)
             .NotEmpty()
-            .MinimumLength(8)
+            .MinimumLength(4)
             .MaximumLength(64);
     }
 }

@@ -17,7 +17,7 @@ public class CreateUserCommandValidator
 
         RuleFor(x => x.Password)
             .NotEmpty()
-            .MinimumLength(8)
+            .MinimumLength(4)
             .MaximumLength(64);
 
         RuleFor(x => x.Roles)
