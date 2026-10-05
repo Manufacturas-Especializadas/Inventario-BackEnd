@@ -57,22 +57,27 @@ public class CreateEmployeeCommandHandler
                 $"Employee number '{employeeNumber}' already exists.");
         }
 
-        var organizationalUnit =
-            await _organizationalUnitRepository
-                .GetByIdAsync(
-                    request.OrganizationalUnitId,
-                    cancellationToken);
+        OrganizationalUnit? organizationalUnit = null;
 
-        if (organizationalUnit is null)
+        if (request.OrganizationalUnitId.HasValue)
         {
-            throw new NotFoundException(
-                $"Organizational unit with id '{request.OrganizationalUnitId}' was not found.");
-        }
+            organizationalUnit =
+                await _organizationalUnitRepository
+                    .GetByIdAsync(
+                        request.OrganizationalUnitId.Value,
+                        cancellationToken);
 
-        if (!organizationalUnit.IsActive)
-        {
-            throw new ConflictException(
-                $"Organizational unit '{organizationalUnit.Name}' is inactive.");
+            if (organizationalUnit is null)
+            {
+                throw new NotFoundException(
+                    $"Organizational unit with id '{request.OrganizationalUnitId}' was not found.");
+            }
+
+            if (!organizationalUnit.IsActive)
+            {
+                throw new ConflictException(
+                    $"Organizational unit '{organizationalUnit.Name}' is inactive.");
+            }
         }
 
         var employee =
@@ -85,7 +90,7 @@ public class CreateEmployeeCommandHandler
                     employeeName,
 
                 OrganizationalUnitId =
-                    organizationalUnit.Id,
+                    organizationalUnit?.Id,
 
                 /*
                  * Legacy.
@@ -136,13 +141,13 @@ public class CreateEmployeeCommandHandler
                 null,
 
             OrganizationalUnitId =
-                organizationalUnit.Id,
+                employee.OrganizationalUnitId,
 
             OrganizationalUnitName =
-                organizationalUnit.Name,
+                organizationalUnit?.Name,
 
             OrganizationalUnitType =
-                organizationalUnit.Type,
+                organizationalUnit?.Type,
 
             IsActive =
                 employee.IsActive,

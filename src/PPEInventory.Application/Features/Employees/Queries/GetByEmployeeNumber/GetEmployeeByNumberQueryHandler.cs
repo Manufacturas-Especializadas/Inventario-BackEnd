@@ -44,6 +44,10 @@ public class GetEmployeeByNumberQueryHandler
             LineId = employee.LineId,
             LineName = employee.Line?.Name,
 
+            OrganizationalUnitId = employee.OrganizationalUnitId,
+            OrganizationalUnitName = employee.OrganizationalUnit?.Name,
+            OrganizationalUnitType = employee.OrganizationalUnit?.Type,
+
             IsActive = employee.IsActive,
             CreatedAt = employee.CreatedAt
         };

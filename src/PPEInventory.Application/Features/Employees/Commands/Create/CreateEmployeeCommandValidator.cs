@@ -21,6 +21,7 @@ public class CreateEmployeeCommandValidator
 
         RuleFor(
                 x => x.OrganizationalUnitId)
-            .GreaterThan(0);
+            .GreaterThan(0)
+            .When(x => x.OrganizationalUnitId.HasValue);
     }
 }

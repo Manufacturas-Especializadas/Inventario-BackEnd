@@ -37,6 +37,10 @@ public class GetEmployeesQueryHandler
                 LineId = x.LineId,
                 LineName = x.Line?.Name,
 
+                OrganizationalUnitId = x.OrganizationalUnitId,
+                OrganizationalUnitName = x.OrganizationalUnit?.Name,
+                OrganizationalUnitType = x.OrganizationalUnit?.Type,
+
                 IsActive = x.IsActive,
                 CreatedAt = x.CreatedAt
             })
