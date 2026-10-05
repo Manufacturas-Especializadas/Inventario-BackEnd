@@ -6,5 +6,5 @@ public record UpdateEmployeeCommand(
     int Id,
     string EmployeeNumber,
     string Name,
-    int OrganizationalUnitId)
+    int? OrganizationalUnitId)
     : IRequest<EmployeeDto>;

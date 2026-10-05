@@ -5,5 +5,5 @@ namespace PPEInventory.Application.Features.Employees.Commands.Create;
 public record CreateEmployeeCommand(
     string EmployeeNumber,
     string Name,
-    int OrganizationalUnitId)
+    int? OrganizationalUnitId)
     : IRequest<EmployeeDto>;

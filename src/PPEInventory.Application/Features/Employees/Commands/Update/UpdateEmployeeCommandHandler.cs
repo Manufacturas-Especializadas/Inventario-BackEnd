@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using PPEInventory.Application.Common.Exceptions;
 using PPEInventory.Application.Interfaces;
+using PPEInventory.Domain.Entities;
 
 namespace PPEInventory.Application.Features.Employees.Commands.Update;
 
@@ -84,24 +85,27 @@ public class UpdateEmployeeCommandHandler
         }
 
 
-        var organizationalUnit =
-            await _organizationalUnitRepository
-                .GetByIdAsync(
-                    request.OrganizationalUnitId,
-                    cancellationToken);
+        OrganizationalUnit? organizationalUnit = null;
 
-
-        if (organizationalUnit is null)
+        if (request.OrganizationalUnitId.HasValue)
         {
-            throw new NotFoundException(
-                $"Organizational unit with id '{request.OrganizationalUnitId}' was not found.");
-        }
+            organizationalUnit =
+                await _organizationalUnitRepository
+                    .GetByIdAsync(
+                        request.OrganizationalUnitId.Value,
+                        cancellationToken);
 
+            if (organizationalUnit is null)
+            {
+                throw new NotFoundException(
+                    $"Organizational unit with id '{request.OrganizationalUnitId}' was not found.");
+            }
 
-        if (!organizationalUnit.IsActive)
-        {
-            throw new ConflictException(
-                $"Organizational unit '{organizationalUnit.Name}' is inactive.");
+            if (!organizationalUnit.IsActive)
+            {
+                throw new ConflictException(
+                    $"Organizational unit '{organizationalUnit.Name}' is inactive.");
+            }
         }
 
 
@@ -112,7 +116,12 @@ public class UpdateEmployeeCommandHandler
             employeeName;
 
         employee.OrganizationalUnitId =
-            organizationalUnit.Id;
+            organizationalUnit?.Id;
+
+        if (organizationalUnit is null)
+        {
+            employee.OrganizationalUnit = null;
+        }
 
 
         /*
@@ -160,13 +169,13 @@ public class UpdateEmployeeCommandHandler
                 null,
 
             OrganizationalUnitId =
-                organizationalUnit.Id,
+                employee.OrganizationalUnitId,
 
             OrganizationalUnitName =
-                organizationalUnit.Name,
+                organizationalUnit?.Name,
 
             OrganizationalUnitType =
-                organizationalUnit.Type,
+                organizationalUnit?.Type,
 
             IsActive =
                 employee.IsActive,

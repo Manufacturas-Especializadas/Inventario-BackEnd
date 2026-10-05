@@ -48,19 +48,18 @@ public class SetEmployeeStatusCommandHandler
 
         /*
          * Para reactivar un empleado,
-         * debe seguir perteneciendo a una
-         * unidad organizacional válida y activa.
+         * si tiene una unidad organizacional asignada,
+         * esta debe seguir siendo válida y activa.
          */
-        if (request.IsActive)
+        if (request.IsActive &&
+            employee.OrganizationalUnitId.HasValue)
         {
             if (
-                employee.OrganizationalUnitId
-                    is null ||
                 employee.OrganizationalUnit
                     is null)
             {
                 throw new ConflictException(
-                    "The employee cannot be activated because no organizational unit is assigned.");
+                    "The employee cannot be activated because the assigned organizational unit was not found.");
             }
 
 
