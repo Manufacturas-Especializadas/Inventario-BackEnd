@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Application.Features.Authentication.Commands.Login;
 using Microsoft.AspNetCore.Authorization;
-using PPEInventory.Application.Interfaces;
+using PPEInventory.Application.Features.Authentication.Queries.GetCurrentUser;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -11,41 +11,19 @@ namespace PPEInventory.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ICurrentUserService _currentUserService;
 
-    public AuthController(IMediator mediator, ICurrentUserService currentUserService)
+    public AuthController(IMediator mediator)
     {
         _mediator = mediator;
-        _currentUserService = currentUserService;
     }
 
     [HttpGet("me")]
     [Authorize]
-    public IActionResult Me()
+    public async Task<IActionResult> Me(CancellationToken cancellationToken)
     {
-        return Ok(new
-        {
-            isAuthenticated =
-                _currentUserService.IsAuthenticated,
-
-            userId =
-                _currentUserService.UserId,
-
-            employeeId =
-                _currentUserService.EmployeeId,
-
-            employeeNumber =
-                _currentUserService.EmployeeNumber,
-
-            name =
-                _currentUserService.Name,
-
-            username =
-                _currentUserService.Username,
-
-            roles =
-                _currentUserService.Roles
-        });
+        return Ok(await _mediator.Send(
+            new GetCurrentUserQuery(),
+            cancellationToken));
     }
 
     [HttpPost("login")]

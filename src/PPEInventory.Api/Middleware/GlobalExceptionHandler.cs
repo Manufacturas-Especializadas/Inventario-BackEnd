@@ -73,6 +73,19 @@ public sealed class GlobalExceptionHandler
                     break;
                 }
 
+            case ForbiddenException:
+                {
+                    problemDetails = new ProblemDetails
+                    {
+                        Status = StatusCodes.Status403Forbidden,
+                        Title = "Forbidden",
+                        Detail = exception.Message,
+                        Instance = httpContext.Request.Path
+                    };
+
+                    break;
+                }
+
             case UnauthorizedException:
                 {
                     problemDetails = new ProblemDetails

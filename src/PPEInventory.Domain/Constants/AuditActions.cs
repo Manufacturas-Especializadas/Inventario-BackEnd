@@ -2,6 +2,9 @@
 
 public static class AuditActions
 {
+    public const string PPERequestApproved = "PPERequestApproved";
+    public const string PPERequestRejected = "PPERequestRejected";
+
     public const string InventoryAdjustmentPosted =
         "InventoryAdjustmentPosted";
 

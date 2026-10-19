@@ -1,4 +1,5 @@
 ﻿using PPEInventory.Application.Common.Models;
+using PPEInventory.Application.Features.PPERequests;
 using PPEInventory.Domain.Entities;
 
 namespace PPEInventory.Application.Interfaces;
@@ -13,6 +14,10 @@ public interface IPPERequestRepository
         string folio,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Acquires an update lock in the caller's transaction. Call before loading
+    /// the request into the change tracker so its state reflects the locked read.
+    /// </summary>
     Task<PPERequest?> GetByFolioForUpdateAsync(
     string folio,
     CancellationToken cancellationToken = default);
@@ -25,6 +30,11 @@ public interface IPPERequestRepository
     Task<IReadOnlyList<PPERequest>> GetPendingAsync(
     int? warehouseId,
     CancellationToken cancellationToken = default);
+
+    Task<PagedResult<PendingApprovalPPERequestDto>> GetPendingApprovalPageAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<PPERequest>>
     GetHistoryByEmployeeNumberAsync(

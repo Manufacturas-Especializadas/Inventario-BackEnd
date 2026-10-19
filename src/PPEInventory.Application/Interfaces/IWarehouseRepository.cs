@@ -1,9 +1,14 @@
 ﻿using PPEInventory.Domain.Entities;
 
+using PPEInventory.Application.Features.PPERequests;
+
 namespace PPEInventory.Application.Interfaces;
 
 public interface IWarehouseRepository
 {
+    Task<IReadOnlyList<PPERequestWarehouseDto>> GetPPERequestOptionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Warehouse>> GetAllAsync(
         CancellationToken cancellationToken = default);
 

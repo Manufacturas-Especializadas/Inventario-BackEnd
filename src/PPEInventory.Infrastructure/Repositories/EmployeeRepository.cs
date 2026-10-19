@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Interfaces;
+using PPEInventory.Application.Features.Employees;
 using PPEInventory.Domain.Entities;
 using PPEInventory.Infrastructure.Persistence;
 
@@ -12,6 +13,27 @@ public class EmployeeRepository : IEmployeeRepository
     public EmployeeRepository(ApplicationDbContext context)
     {
         _context = context;
+    }
+
+    public Task<EmployeeIdentityDto?> GetIdentityByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Employees
+            .AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new EmployeeIdentityDto
+            {
+                EmployeeId = x.Id,
+                EmployeeNumber = x.EmployeeNumber,
+                Name = x.Name,
+                OrganizationalUnitId = x.OrganizationalUnitId,
+                OrganizationalUnitName = x.OrganizationalUnit == null
+                    ? null : x.OrganizationalUnit.Name,
+                OrganizationalUnitType = x.OrganizationalUnit == null
+                    ? null : x.OrganizationalUnit.Type
+            })
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<Employee>> GetAllAsync(

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Interfaces;
+using PPEInventory.Application.Features.PPERequests;
 using PPEInventory.Domain.Entities;
 using PPEInventory.Infrastructure.Persistence;
 
@@ -16,6 +17,41 @@ public class WarehouseProductRepository
         _context = context;
     }
 
+
+    public async Task<IReadOnlyList<RequestablePPEProductDto>> GetRequestableProductsAsync(
+        int warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            from relation in _context.WarehouseProducts.AsNoTracking()
+            join balance in _context.InventoryBalances.AsNoTracking()
+                on new { relation.WarehouseId, relation.PPEProductId }
+                equals new { balance.WarehouseId, balance.PPEProductId }
+                into balances
+            from balance in balances.DefaultIfEmpty()
+            where relation.WarehouseId == warehouseId &&
+                relation.Warehouse.IsActive &&
+                relation.IsActive && relation.PPEProduct.IsActive
+            orderby relation.PPEProduct.Name, relation.PPEProduct.Sku
+            select new RequestablePPEProductDto
+            {
+                PPEProductId = relation.PPEProductId,
+                Sku = relation.PPEProduct.Sku,
+                Name = relation.PPEProduct.Name,
+                AvailableQuantity = balance == null
+                    ? 0 : balance.OnHandQuantity - balance.ReservedQuantity,
+                Size = relation.PPEProduct.ProductSize == null
+                    ? null : relation.PPEProduct.ProductSize.Name,
+                Color = relation.PPEProduct.ProductColor == null
+                    ? null : relation.PPEProduct.ProductColor.Name,
+                Model = relation.PPEProduct.Model,
+                Specification = relation.PPEProduct.Specification,
+                StockUnit = relation.PPEProduct.StockUnitOfMeasure.Name,
+                StockUnitSymbol = relation.PPEProduct.StockUnitOfMeasure.Symbol
+            };
+
+        return await query.ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<WarehouseProduct>>
         GetByWarehouseIdAsync(

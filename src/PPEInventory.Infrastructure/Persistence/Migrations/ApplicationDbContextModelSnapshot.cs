@@ -768,6 +768,12 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ApprovedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -805,6 +811,16 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RejectedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int>("RequestReasonId")
                         .HasColumnType("int");
 
@@ -822,6 +838,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ApprovedByUserId");
+
                     b.HasIndex("CancelledByUserId");
 
                     b.HasIndex("CreatedByUserId");
@@ -832,6 +850,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Folio")
                         .IsUnique();
+
+                    b.HasIndex("RejectedByUserId");
 
                     b.HasIndex("RequestReasonId");
 
@@ -1908,6 +1928,11 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.PPERequest", b =>
                 {
+                    b.HasOne("PPEInventory.Domain.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PPEInventory.Domain.Entities.User", "CancelledByUser")
                         .WithMany()
                         .HasForeignKey("CancelledByUserId")
@@ -1930,6 +1955,11 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PPEInventory.Domain.Entities.User", "RejectedByUser")
+                        .WithMany()
+                        .HasForeignKey("RejectedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PPEInventory.Domain.Entities.RequestReason", "RequestReason")
                         .WithMany("PPERequests")
                         .HasForeignKey("RequestReasonId")
@@ -1947,6 +1977,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("ApprovedByUser");
+
                     b.Navigation("CancelledByUser");
 
                     b.Navigation("CreatedByUser");
@@ -1954,6 +1986,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("DeliveredByUser");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("RejectedByUser");
 
                     b.Navigation("RequestReason");
 

@@ -5,13 +5,18 @@ using PPEInventory.Api.Authorization;
 using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests.Cancellation;
 using PPEInventory.Application.Features.PPERequests.Commands.Cancel;
+using PPEInventory.Application.Features.PPERequests.Commands.Approve;
+using PPEInventory.Application.Features.PPERequests.Commands.Reject;
 using PPEInventory.Application.Features.PPERequests.Commands.Create;
 using PPEInventory.Application.Features.PPERequests.Commands.Deliver;
 using PPEInventory.Application.Features.PPERequests.Delivery;
 using PPEInventory.Application.Features.PPERequests.Queries.GetByFolio;
 using PPEInventory.Application.Features.PPERequests.Queries.GetEmployeeHistory;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
+using PPEInventory.Application.Features.PPERequests.Queries.GetPendingApproval;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPendingByEmployee;
+using PPEInventory.Application.Features.PPERequests.Queries.GetFormOptions;
+using PPEInventory.Application.Features.PPERequests.Queries.GetRequestableProducts;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -25,6 +30,27 @@ public class PPERequestsController : ControllerBase
         IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpGet("form-options")]
+    [Authorize(Policy = AuthorizationPolicies.PPERequester)]
+    public async Task<IActionResult> GetFormOptions(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new GetPPERequestFormOptionsQuery(),
+            cancellationToken));
+    }
+
+    [HttpGet("requestable-products")]
+    [Authorize(Policy = AuthorizationPolicies.PPERequester)]
+    public async Task<IActionResult> GetRequestableProducts(
+        [FromQuery] int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new GetRequestablePPEProductsQuery(warehouseId),
+            cancellationToken));
     }
 
     [HttpGet("{folio}")]
@@ -41,7 +67,7 @@ public class PPERequestsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Production)]
+    [Authorize(Policy = AuthorizationPolicies.PPERequester)]
     public async Task<IActionResult> Create(
         CreatePPERequestCommand command,
         CancellationToken cancellationToken)
@@ -70,7 +96,7 @@ public class PPERequestsController : ControllerBase
     }
 
     [HttpPost("{folio}/cancel")]
-    [Authorize(Policy = AuthorizationPolicies.Production)]
+    [Authorize(Policy = AuthorizationPolicies.PPERequester)]
     public async Task<IActionResult> Cancel(
     string folio,
     CancelPPERequestRequest request,
@@ -111,6 +137,39 @@ public class PPERequestsController : ControllerBase
                 new GetPendingPPERequestsQuery(
                     warehouseId),
                 cancellationToken));
+    }
+
+    [HttpPost("{folio}/approve")]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> Approve(
+        string folio,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new ApprovePPERequestCommand(folio), cancellationToken));
+    }
+
+    [HttpPost("{folio}/reject")]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> Reject(
+        string folio,
+        RejectPPERequestRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new RejectPPERequestCommand(folio, request.RejectionReason), cancellationToken));
+    }
+
+    [HttpGet("pending-approval")]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
+    public async Task<IActionResult> GetPendingApproval(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = PaginationParameters.DefaultPageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await _mediator.Send(
+            new GetPendingApprovalPPERequestsQuery(pageNumber, pageSize),
+            cancellationToken));
     }
 
     [HttpGet("history")]

@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Interfaces;
+using PPEInventory.Application.Features.PPERequests;
 using PPEInventory.Domain.Entities;
 using PPEInventory.Infrastructure.Persistence;
 
@@ -14,6 +15,24 @@ public class WarehouseRepository
         ApplicationDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<IReadOnlyList<PPERequestWarehouseDto>> GetPPERequestOptionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Warehouses
+            .AsNoTracking()
+            .Where(x => x.IsActive && x.WarehouseProducts.Any(
+                relation => relation.IsActive && relation.PPEProduct.IsActive))
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.Code)
+            .Select(x => new PPERequestWarehouseDto
+            {
+                Id = x.Id,
+                Code = x.Code,
+                Name = x.Name
+            })
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<Warehouse>> GetAllAsync(

@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using PPEInventory.Application.Common.Exceptions;
+using PPEInventory.Application.Common.Constants;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Constants;
 using PPEInventory.Domain.Entities;
@@ -18,6 +19,7 @@ public class CreatePPERequestCommandHandler
     private readonly IPPEProductRepository _productRepository;
     private readonly IPPERequestRepository _requestRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IInventoryCountRepository _inventoryCountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTimeProvider;
@@ -32,6 +34,7 @@ public class CreatePPERequestCommandHandler
         IPPEProductRepository productRepository,
         IPPERequestRepository requestRepository,
         IInventoryRepository inventoryRepository,
+        IInventoryCountRepository inventoryCountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTimeProvider,
@@ -45,6 +48,7 @@ public class CreatePPERequestCommandHandler
         _productRepository = productRepository;
         _requestRepository = requestRepository;
         _inventoryRepository = inventoryRepository;
+        _inventoryCountRepository = inventoryCountRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTimeProvider = dateTimeProvider;
@@ -57,12 +61,26 @@ public class CreatePPERequestCommandHandler
         CreatePPERequestCommand request,
         CancellationToken cancellationToken)
     {
-        var employeeNumber =
-            request.EmployeeNumber.Trim();
-
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException(
                 "Authenticated user was not found.");
+
+        // Administrator takes precedence when both roles are assigned.
+        var isAdministrator = _currentUser.IsInRole(AppRoles.Administrator);
+
+        if (!isAdministrator && !_currentUser.IsInRole(AppRoles.Production))
+        {
+            throw new UnauthorizedException(
+                "Only Administrator or Production can create PPE requests.");
+        }
+
+        if (isAdministrator &&
+            (string.IsNullOrWhiteSpace(request.EmployeeNumber) ||
+             !request.RequestedForOrganizationalUnitId.HasValue))
+        {
+            throw new ConflictException(
+                "Administrator requests require EmployeeNumber and RequestedForOrganizationalUnitId.");
+        }
 
         await using var transaction =
             await _unitOfWork
@@ -71,34 +89,79 @@ public class CreatePPERequestCommandHandler
 
         try
         {
-            var employee =
-                await _employeeRepository
-                    .GetByEmployeeNumberAsync(
-                        employeeNumber,
-                        cancellationToken);
+            Employee employee;
 
-            if (employee is null)
+            if (isAdministrator)
             {
-                throw new NotFoundException(
-                    $"Employee '{employeeNumber}' was not found.");
+                var employeeNumber = request.EmployeeNumber!.Trim();
+
+                employee = await _employeeRepository.GetByEmployeeNumberAsync(
+                    employeeNumber,
+                    cancellationToken)
+                    ?? throw new NotFoundException(
+                        $"Employee '{employeeNumber}' was not found.");
+            }
+            else
+            {
+                var employeeId = _currentUser.EmployeeId
+                    ?? throw new UnauthorizedException(
+                        "The authenticated user does not have an associated employee.");
+
+                employee = await _employeeRepository.GetByIdAsync(
+                    employeeId,
+                    cancellationToken)
+                    ?? throw new NotFoundException(
+                        $"Employee with id '{employeeId}' was not found.");
             }
 
             if (!employee.IsActive)
             {
                 throw new ConflictException(
-                    $"Employee '{employeeNumber}' is inactive.");
+                    $"Employee '{employee.EmployeeNumber}' is inactive.");
+            }
+
+            int requestedForOrganizationalUnitId;
+
+            if (isAdministrator)
+            {
+                requestedForOrganizationalUnitId =
+                    request.RequestedForOrganizationalUnitId!.Value;
+            }
+            else
+            {
+                requestedForOrganizationalUnitId = employee.OrganizationalUnitId
+                    ?? throw new ConflictException(
+                        $"Employee '{employee.EmployeeNumber}' does not have an organizational unit assigned and cannot create PPE requests.");
+
+                if (request.EmployeeNumber is not null &&
+                    !string.Equals(
+                        request.EmployeeNumber.Trim(),
+                        employee.EmployeeNumber,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ConflictException(
+                        "EmployeeNumber must match the authenticated employee.");
+                }
+
+                if (request.RequestedForOrganizationalUnitId.HasValue &&
+                    request.RequestedForOrganizationalUnitId.Value !=
+                        requestedForOrganizationalUnitId)
+                {
+                    throw new ConflictException(
+                        "RequestedForOrganizationalUnitId must match the authenticated employee's current organizational unit.");
+                }
             }
 
             var requestedForOrganizationalUnit =
     await _organizationalUnitRepository
         .GetByIdAsync(
-            request.RequestedForOrganizationalUnitId,
+            requestedForOrganizationalUnitId,
             cancellationToken);
 
             if (requestedForOrganizationalUnit is null)
             {
                 throw new NotFoundException(
-                    $"Organizational unit with id '{request.RequestedForOrganizationalUnitId}' was not found.");
+                    $"Organizational unit with id '{requestedForOrganizationalUnitId}' was not found.");
             }
 
             if (!requestedForOrganizationalUnit.IsActive)
@@ -228,43 +291,132 @@ public class CreatePPERequestCommandHandler
 
 
 
-            var organizationalUnitIds =
-     organizationalPath
-         .Select(x => x.Id)
-         .ToArray();
-
-            var configuredLimits =
-                await _organizationalUnitPPELimitRepository
-                    .GetActiveByUnitsAndProductsAsync(
-                        organizationalUnitIds,
-                        productIds,
-                        cancellationToken);
-
-            var limitsByUnitAndProduct =
-                configuredLimits.ToDictionary(
-                    x => (
-                        x.OrganizationalUnitId,
-                        x.PPEProductId
-                    ));
-
-            var appliedMaxByProductId =
-                new Dictionary<int, int?>();
-
-            var now =
-                _dateTimeProvider.UtcNow;
-
+            var appliedMaxByProductId = new Dictionary<int, int?>();
+            var now = _dateTimeProvider.UtcNow;
             var warnings = new List<PPERequestWarningDto>();
 
-            var committedQuantitiesByProductId =
-                isExceptionalRequest
-                    ? new Dictionary<int, int>()
-                    : await _requestRepository
+            // Exceptional requests do not use normal cycle limits.
+            if (!isExceptionalRequest)
+            {
+                var organizationalUnitIds =
+                    organizationalPath
+                        .Select(x => x.Id)
+                        .ToArray();
+
+                var configuredLimits =
+                    await _organizationalUnitPPELimitRepository
+                        .GetActiveByUnitsAndProductsAsync(
+                            organizationalUnitIds,
+                            productIds,
+                            cancellationToken);
+
+                var limitsByUnitAndProduct =
+                    configuredLimits.ToDictionary(
+                        x => (
+                            x.OrganizationalUnitId,
+                            x.PPEProductId
+                        ));
+
+                var committedQuantitiesByProductId =
+                    await _requestRepository
                         .GetCommittedNormalQuantitiesInCycleAsync(
                             requestedForOrganizationalUnit.Id,
                             productIds,
                             now,
                             cancellationToken);
 
+                foreach (var requestItem in request.Items)
+                {
+                    var product =
+                        productsById[
+                            requestItem.PPEProductId];
+
+                    int? effectiveMax = null;
+
+                    foreach (var unit in organizationalPath)
+                    {
+                        if (
+                            limitsByUnitAndProduct.TryGetValue(
+                                (
+                                    unit.Id,
+                                    product.Id
+                                ),
+                                out var configuredLimit)
+                        )
+                        {
+                            effectiveMax =
+                                configuredLimit.MaxQuantityPerCycle;
+
+                            break;
+                        }
+                    }
+
+                    effectiveMax ??=
+                        product.DefaultMaxQuantityPerCycle;
+
+                    appliedMaxByProductId[
+                        product.Id
+                    ] = effectiveMax;
+
+                    /*
+                     * Si no existe máximo configurado,
+                     * no hay límite de ciclo para este producto.
+                     */
+                    if (!effectiveMax.HasValue)
+                    {
+                        continue;
+                    }
+
+                    /*
+                     * Si existe máximo, necesitamos una vida útil
+                     * para poder saber cuándo se libera el cupo.
+                     */
+                    if (
+                        !product.ReplacementIntervalDays.HasValue ||
+                        product.ReplacementIntervalDays.Value <= 0
+                    )
+                    {
+                        throw new ConflictException(
+                            $"Product '{product.Sku}' has a quantity limit but does not have a valid replacement interval configured.");
+                    }
+
+                    committedQuantitiesByProductId.TryGetValue(
+                        product.Id,
+                        out var committedQuantity);
+
+                    var projectedQuantity =
+                        committedQuantity +
+                        requestItem.Quantity;
+
+                    if (
+                        projectedQuantity >
+                        effectiveMax.Value
+                    )
+                    {
+                        var remainingQuantity =
+                            Math.Max(
+                                0,
+                                effectiveMax.Value -
+                                committedQuantity);
+
+                        throw new ConflictException(
+                            $"Product '{product.Sku}' has reached the quantity limit for organizational unit '{requestedForOrganizationalUnit.Name}'. " +
+                            $"Maximum per replacement cycle: {effectiveMax.Value}. " +
+                            $"Currently committed: {committedQuantity}. " +
+                            $"Available to request: {remainingQuantity}. " +
+                            $"Requested: {requestItem.Quantity}.");
+                    }
+                }
+
+                if (await _inventoryCountRepository.HasDraftCountAsync(
+                    warehouse.Id, cancellationToken))
+                {
+                    throw new ConflictException(
+                        $"Warehouse '{warehouse.Name}' has a draft inventory count and cannot reserve inventory.");
+                }
+            }
+
+            // Both paths require current availability; only normal requests reserve it.
             var balances =
                 await _inventoryRepository
                     .GetBalancesForUpdateAsync(
@@ -288,99 +440,6 @@ public class CreatePPERequestCommandHandler
                 throw new ConflictException(
                     $"The following PPE product(s) are not available in warehouse '{warehouse.Name}': " +
                     $"{string.Join(", ", productsWithoutBalance)}.");
-            }
-
-            foreach (var requestItem in request.Items)
-            {
-                var product =
-                    productsById[
-                        requestItem.PPEProductId];
-
-                int? effectiveMax = null;
-
-                foreach (var unit in organizationalPath)
-                {
-                    if (
-                        limitsByUnitAndProduct.TryGetValue(
-                            (
-                                unit.Id,
-                                product.Id
-                            ),
-                            out var configuredLimit)
-                    )
-                    {
-                        effectiveMax =
-    configuredLimit
-        .MaxQuantityPerCycle;
-
-                        break;
-                    }
-                }
-
-                effectiveMax ??=
-    product.DefaultMaxQuantityPerCycle;
-
-                appliedMaxByProductId[
-                    product.Id
-                ] = effectiveMax;
-
-                /*
-                 * Si no existe máximo configurado,
-                 * no hay límite de ciclo para este producto.
-                 */
-                if (!effectiveMax.HasValue)
-                {
-                    continue;
-                }
-
-                /*
-                 * Si existe máximo, necesitamos una vida útil
-                 * para poder saber cuándo se libera el cupo.
-                 */
-                if (
-                    !product.ReplacementIntervalDays.HasValue ||
-                    product.ReplacementIntervalDays.Value <= 0
-                )
-                {
-                    throw new ConflictException(
-                        $"Product '{product.Sku}' has a quantity limit but does not have a valid replacement interval configured.");
-                }
-
-                /*
-                 * Damage / Lost / Other son excepciones.
-                 * No consumen ni son bloqueadas por el cupo normal.
-                 */
-                if (isExceptionalRequest)
-                {
-                    continue;
-                }
-
-                committedQuantitiesByProductId.TryGetValue(
-                    product.Id,
-                    out var committedQuantity);
-
-                var projectedQuantity =
-                    committedQuantity +
-                    requestItem.Quantity;
-
-                if (
-                    projectedQuantity >
-                    effectiveMax.Value
-                )
-                {
-                    var remainingQuantity =
-                        Math.Max(
-                            0,
-                            effectiveMax.Value -
-                            committedQuantity);
-
-                    throw new ConflictException(
-                        $"Product '{product.Sku}' has reached the quantity limit for organizational unit '{requestedForOrganizationalUnit.Name}'. " +
-                        $"Maximum per replacement cycle: {effectiveMax.Value}. " +
-                        $"Currently committed: {committedQuantity}. " +
-                        $"Available to request: {remainingQuantity}. " +
-                        $"Requested: {requestItem.Quantity}.");
-                }
             }
 
             foreach (var requestItem in request.Items)
@@ -431,7 +490,9 @@ public class CreatePPERequestCommandHandler
                         reason.Id,
 
                     Status =
-                        PPERequestStatus.Pending,
+                        isExceptionalRequest
+                            ? PPERequestStatus.PendingApproval
+                            : PPERequestStatus.Pending,
 
                     Notes =
                         Normalize(request.Notes),
@@ -455,35 +516,39 @@ public class CreatePPERequestCommandHandler
                             requestItem.Quantity,
 
                         AppliedMaxQuantityPerCycle =
-                            appliedMaxByProductId[
-                                requestItem.PPEProductId]
+                            isExceptionalRequest
+                                ? null
+                                : appliedMaxByProductId[requestItem.PPEProductId]
                     });
 
-                var balance =
-                    balancesByProductId[
-                        requestItem.PPEProductId];
-
-                var product =
-                    productsById[
-                        requestItem.PPEProductId];
-
-                var availableQuantity =
-                    balance.OnHandQuantity -
-                    balance.ReservedQuantity;
-
-                if (
-                    requestItem.Quantity >
-                    availableQuantity
-                )
+                if (!isExceptionalRequest)
                 {
-                    throw new ConflictException(
-                        $"Product '{product.Sku}' does not have enough available stock in warehouse '{warehouse.Name}'. " +
-                        $"Available: {availableQuantity}. " +
-                        $"Requested: {requestItem.Quantity}.");
-                }
+                    var balance =
+                        balancesByProductId[
+                            requestItem.PPEProductId];
 
-                balance.ReservedQuantity +=
-                    requestItem.Quantity;
+                    var product =
+                        productsById[
+                            requestItem.PPEProductId];
+
+                    var availableQuantity =
+                        balance.OnHandQuantity -
+                        balance.ReservedQuantity;
+
+                    if (
+                        requestItem.Quantity >
+                        availableQuantity
+                    )
+                    {
+                        throw new ConflictException(
+                            $"Product '{product.Sku}' does not have enough available stock in warehouse '{warehouse.Name}'. " +
+                            $"Available: {availableQuantity}. " +
+                            $"Requested: {requestItem.Quantity}.");
+                    }
+
+                    balance.ReservedQuantity +=
+                        requestItem.Quantity;
+                }
             }
 
             await _requestRepository.AddAsync(
@@ -491,7 +556,7 @@ public class CreatePPERequestCommandHandler
                 cancellationToken);
 
             // Un solo SaveChanges:
-            // Request + Items + ReservedQuantity.
+            // Request + Items, plus ReservedQuantity only for normal requests.
             await _unitOfWork.SaveChangesAsync(
                 cancellationToken);
 
