@@ -167,6 +167,17 @@ builder.Services.AddAuthorization(options =>
         });
 
     options.AddPolicy(
+        AuthorizationPolicies.PPERequester,
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole(
+                AppRoles.Administrator,
+                AppRoles.Production);
+        });
+
+    options.AddPolicy(
         AuthorizationPolicies.Warehouse,
         policy =>
         {
@@ -185,7 +196,6 @@ builder.Services.AddAuthorization(options =>
 
             policy.RequireRole(
                 AppRoles.Administrator,
-                AppRoles.Production,
                 AppRoles.Warehouse,
                 AppRoles.Viewer);
         });

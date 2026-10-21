@@ -39,6 +39,9 @@ public class PPERequestConfiguration
         builder.Property(x => x.CancellationReason)
             .HasMaxLength(500);
 
+        builder.Property(x => x.RejectionReason)
+            .HasMaxLength(500);
+
         builder.HasOne(x => x.Employee)
             .WithMany()
             .HasForeignKey(x => x.EmployeeId)
@@ -62,6 +65,16 @@ public class PPERequestConfiguration
         builder.HasOne(x => x.DeliveredByUser)
             .WithMany()
             .HasForeignKey(x => x.DeliveredByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.ApprovedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.RejectedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.RejectedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.CancelledByUser)

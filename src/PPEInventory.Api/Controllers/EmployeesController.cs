@@ -22,7 +22,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Viewer)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpGet("by-number/{employeeNumber}")]
-    [Authorize(Policy = AuthorizationPolicies.Viewer)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> GetByEmployeeNumber(
         string employeeNumber,
         CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Production)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Create(
         CreateEmployeeCommand command,
         CancellationToken cancellationToken)
@@ -60,7 +60,7 @@ public class EmployeesController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = AuthorizationPolicies.Production)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Update(
     int id,
     UpdateEmployeeCommand command,
@@ -85,7 +85,7 @@ public class EmployeesController : ControllerBase
 
     [HttpPut("{id:int}/status")]
     [Authorize(
-    Policy = AuthorizationPolicies.Production)]
+    Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> SetStatus(
     int id,
     SetEmployeeStatusRequest request,

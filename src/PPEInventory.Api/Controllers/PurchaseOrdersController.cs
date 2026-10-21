@@ -26,7 +26,7 @@ public class PurchaseOrdersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthorizationPolicies.Viewer)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> GetAll(
     PurchaseOrderStatus? status = null,
     int pageNumber = 1,
@@ -43,7 +43,7 @@ public class PurchaseOrdersController : ControllerBase
     }
 
     [HttpGet("{folio}")]
-    [Authorize(Policy = AuthorizationPolicies.Viewer)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> GetByFolio(
         string folio,
         CancellationToken cancellationToken)
@@ -58,7 +58,7 @@ public class PurchaseOrdersController : ControllerBase
     [HttpGet("{folio}/receiving-warehouses")]
     [Authorize(
     Policy =
-        AuthorizationPolicies.Viewer)]
+        AuthorizationPolicies.Administrator)]
     public async Task<IActionResult>
     GetReceivingWarehouses(
         string folio,
@@ -72,7 +72,7 @@ public class PurchaseOrdersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Production)]
+    [Authorize(Policy = AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Create(
         CreatePurchaseOrderCommand command,
         CancellationToken cancellationToken)
@@ -86,7 +86,7 @@ public class PurchaseOrdersController : ControllerBase
     [HttpPut("{folio}")]
     [Authorize(
     Policy =
-        AuthorizationPolicies.Production)]
+        AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Update(
     string folio,
     UpdatePurchaseOrderRequest request,
@@ -111,7 +111,7 @@ public class PurchaseOrdersController : ControllerBase
     [HttpPut("{folio}/cancel")]
     [Authorize(
         Policy =
-            AuthorizationPolicies.Production)]
+            AuthorizationPolicies.Administrator)]
     public async Task<IActionResult> Cancel(
         string folio,
         CancelPurchaseOrderRequest request,

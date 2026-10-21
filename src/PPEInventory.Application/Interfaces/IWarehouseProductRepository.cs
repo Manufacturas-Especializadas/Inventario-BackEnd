@@ -1,9 +1,15 @@
 ﻿using PPEInventory.Domain.Entities;
 
+using PPEInventory.Application.Features.PPERequests;
+
 namespace PPEInventory.Application.Interfaces;
 
 public interface IWarehouseProductRepository
 {
+    Task<IReadOnlyList<RequestablePPEProductDto>> GetRequestableProductsAsync(
+        int warehouseId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<WarehouseProduct>>
         GetByWarehouseIdAsync(
             int warehouseId,

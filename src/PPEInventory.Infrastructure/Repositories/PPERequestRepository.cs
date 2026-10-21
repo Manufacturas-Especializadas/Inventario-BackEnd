@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Common.Models;
+using PPEInventory.Application.Features.PPERequests;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Constants;
 using PPEInventory.Domain.Entities;
@@ -53,15 +54,18 @@ public class PPERequestRepository
     CancellationToken cancellationToken = default)
     {
         return _context.PPERequests
+            .FromSqlInterpolated($"""
+            SELECT *
+            FROM PPERequests WITH (UPDLOCK, HOLDLOCK)
+            WHERE Folio = {folio}
+            """)
             .Include(x => x.Employee)
             .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
             .Include(x => x.Items)
                 .ThenInclude(x => x.PPEProduct)
-            .FirstOrDefaultAsync(
-                x => x.Folio == folio,
-                cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<PPERequest>>
@@ -111,6 +115,63 @@ public class PPERequestRepository
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResult<PendingApprovalPPERequestDto>> GetPendingApprovalPageAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.PPERequests
+            .AsNoTracking()
+            .Where(x => x.Status == PPERequestStatus.PendingApproval);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .AsSingleQuery()
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new PendingApprovalPPERequestDto
+            {
+                Id = x.Id,
+                Folio = x.Folio,
+                Status = x.Status,
+                EmployeeId = x.EmployeeId,
+                EmployeeNumber = x.Employee.EmployeeNumber,
+                EmployeeName = x.Employee.Name,
+                RequestedForOrganizationalUnitId = x.RequestedForOrganizationalUnitId,
+                RequestedForOrganizationalUnitName = x.RequestedForOrganizationalUnit == null
+                    ? null
+                    : x.RequestedForOrganizationalUnit.Name,
+                WarehouseId = x.WarehouseId,
+                WarehouseName = x.Warehouse.Name,
+                RequestReasonId = x.RequestReasonId,
+                RequestReason = x.RequestReason.Name,
+                RequestReasonCode = x.RequestReason.Code,
+                Notes = x.Notes,
+                CreatedByUserId = x.CreatedByUserId,
+                CreatedAt = x.CreatedAt,
+                Items = x.Items.OrderBy(item => item.Id)
+                    .Select(item => new PendingApprovalPPERequestItemDto
+                    {
+                        PPEProductId = item.PPEProductId,
+                        Sku = item.PPEProduct.Sku,
+                        ProductName = item.PPEProduct.Name,
+                        Quantity = item.Quantity
+                    }).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<PendingApprovalPPERequestDto>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<IReadOnlyList<PPERequest>>

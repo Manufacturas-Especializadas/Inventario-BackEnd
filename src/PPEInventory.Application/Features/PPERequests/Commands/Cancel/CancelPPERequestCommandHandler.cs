@@ -1,5 +1,7 @@
 ﻿using MediatR;
 using PPEInventory.Application.Common.Exceptions;
+using PPEInventory.Application.Common.Constants;
+using PPEInventory.Domain.Entities;
 using PPEInventory.Application.Features.PPERequests.Cancellation;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Enums;
@@ -66,65 +68,82 @@ public class CancelPPERequestCommandHandler
                     $"PPE request '{folio}' was not found.");
             }
 
-            if (ppeRequest.Status !=
-                PPERequestStatus.Pending)
+            // Administrator takes precedence, including accounts with both roles.
+            if (!_currentUser.IsInRole(AppRoles.Administrator))
+            {
+                if (!_currentUser.IsInRole(AppRoles.Production) ||
+                    ppeRequest.CreatedByUserId != userId)
+                {
+                    throw new ForbiddenException(
+                        "You can only cancel PPE requests that you created.");
+                }
+            }
+
+            if (ppeRequest.Status is not
+                (PPERequestStatus.Pending or PPERequestStatus.PendingApproval))
             {
                 throw new ConflictException(
                     $"PPE request '{folio}' cannot be cancelled because its current status is '{ppeRequest.Status}'.");
             }
 
-            if (ppeRequest.Items.Count == 0)
+            var releasesReservation = ppeRequest.Status == PPERequestStatus.Pending;
+            var balancesByProductId = new Dictionary<int, InventoryBalance>();
+
+            if (releasesReservation)
             {
-                throw new ConflictException(
-                    $"PPE request '{folio}' does not contain items.");
-            }
-
-            var productIds =
-                ppeRequest.Items
-                    .Select(x => x.PPEProductId)
-                    .Distinct()
-                    .OrderBy(x => x)
-                    .ToArray();
-
-            var balances =
-                await _inventoryRepository
-                    .GetBalancesForUpdateAsync(
-                        ppeRequest.WarehouseId,
-                        productIds,
-                        cancellationToken);
-
-            var balancesByProductId =
-                balances.ToDictionary(
-                    x => x.PPEProductId);
-
-            // Primero validamos todos los balances.
-            foreach (var item in ppeRequest.Items)
-            {
-                if (!balancesByProductId.TryGetValue(
-                    item.PPEProductId,
-                    out var balance))
+                if (ppeRequest.Items.Count == 0)
                 {
                     throw new ConflictException(
-                        $"Inventory balance was not found for product '{item.PPEProduct.Sku}'.");
+                        $"PPE request '{folio}' does not contain items.");
                 }
 
-                if (balance.ReservedQuantity <
-                    item.Quantity)
+                var productIds =
+                    ppeRequest.Items
+                        .Select(x => x.PPEProductId)
+                        .Distinct()
+                        .OrderBy(x => x)
+                        .ToArray();
+
+                var balances =
+                    await _inventoryRepository
+                        .GetBalancesForUpdateAsync(
+                            ppeRequest.WarehouseId,
+                            productIds,
+                            cancellationToken);
+
+                balancesByProductId =
+                    balances.ToDictionary(
+                        x => x.PPEProductId);
+
+                // Primero validamos todos los balances.
+                foreach (var item in ppeRequest.Items)
                 {
-                    throw new ConflictException(
-                        $"Reserved inventory for product '{item.PPEProduct.Sku}' is inconsistent. Reserved: {balance.ReservedQuantity}, required to release: {item.Quantity}.");
+                    if (!balancesByProductId.TryGetValue(
+                        item.PPEProductId,
+                        out var balance))
+                    {
+                        throw new ConflictException(
+                            $"Inventory balance was not found for product '{item.PPEProduct.Sku}'.");
+                    }
+
+                    if (balance.ReservedQuantity <
+                        item.Quantity)
+                    {
+                        throw new ConflictException(
+                            $"Reserved inventory for product '{item.PPEProduct.Sku}' is inconsistent. Reserved: {balance.ReservedQuantity}, required to release: {item.Quantity}.");
+                    }
                 }
-            }
 
-            // Ahora sí liberamos reservas.
-            foreach (var item in ppeRequest.Items)
-            {
-                var balance =
-                    balancesByProductId[
-                        item.PPEProductId];
+                // Ahora sí liberamos reservas.
+                foreach (var item in ppeRequest.Items)
+                {
+                    var balance =
+                        balancesByProductId[
+                            item.PPEProductId];
 
-                balance.ReservedQuantity -=
-                    item.Quantity;
+                    balance.ReservedQuantity -=
+                        item.Quantity;
+                }
             }
 
             var now =
@@ -172,9 +191,9 @@ public class CancelPPERequestCommandHandler
                     ppeRequest.Items
                         .Select(item =>
                         {
-                            var balance =
-                                balancesByProductId[
-                                    item.PPEProductId];
+                            var balance = releasesReservation
+                                ? balancesByProductId[item.PPEProductId]
+                                : null;
 
                             return new CancelledPPEItemDto
                             {
@@ -188,17 +207,17 @@ public class CancelPPERequestCommandHandler
                                     item.PPEProduct.Name,
 
                                 ReleasedQuantity =
-                                    item.Quantity,
+                                    releasesReservation ? item.Quantity : 0,
 
                                 OnHandQuantity =
-                                    balance.OnHandQuantity,
+                                    balance?.OnHandQuantity,
 
                                 ReservedQuantity =
-                                    balance.ReservedQuantity,
+                                    balance?.ReservedQuantity,
 
                                 AvailableQuantity =
-                                    balance.OnHandQuantity -
-                                    balance.ReservedQuantity
+                                    balance?.OnHandQuantity -
+                                    balance?.ReservedQuantity
                             };
                         })
                         .ToArray()

@@ -1,9 +1,15 @@
 ﻿using PPEInventory.Domain.Entities;
 
+using PPEInventory.Application.Features.Employees;
+
 namespace PPEInventory.Application.Interfaces;
 
 public interface IEmployeeRepository
 {
+    Task<EmployeeIdentityDto?> GetIdentityByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Employee>> GetAllAsync(
         CancellationToken cancellationToken = default);
 

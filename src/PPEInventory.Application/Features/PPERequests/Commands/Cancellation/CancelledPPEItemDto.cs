@@ -10,9 +10,9 @@ public class CancelledPPEItemDto
 
     public int ReleasedQuantity { get; set; }
 
-    public int OnHandQuantity { get; set; }
+    public int? OnHandQuantity { get; set; }
 
-    public int ReservedQuantity { get; set; }
+    public int? ReservedQuantity { get; set; }
 
-    public int AvailableQuantity { get; set; }
+    public int? AvailableQuantity { get; set; }
 }

@@ -9,10 +9,12 @@ public class CreatePPERequestCommandValidator
     {
         RuleFor(x => x.EmployeeNumber)
             .NotEmpty()
-            .MaximumLength(20);
+            .MaximumLength(20)
+            .When(x => x.EmployeeNumber is not null);
 
         RuleFor(x => x.RequestedForOrganizationalUnitId)
-    .GreaterThan(0);
+            .GreaterThan(0)
+            .When(x => x.RequestedForOrganizationalUnitId.HasValue);
 
         RuleFor(x => x.WarehouseId)
             .GreaterThan(0);

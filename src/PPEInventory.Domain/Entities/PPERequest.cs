@@ -22,6 +22,16 @@ public class PPERequest
 
     public DateTime CreatedAt { get; set; }
 
+    public int? ApprovedByUserId { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
+    public int? RejectedByUserId { get; set; }
+
+    public DateTime? RejectedAt { get; set; }
+
+    public string? RejectionReason { get; set; }
+
     public int? DeliveredByUserId { get; set; }
 
     public DateTime? DeliveredAt { get; set; }
@@ -39,6 +49,10 @@ public class PPERequest
     public RequestReason RequestReason { get; set; } = null!;
 
     public User CreatedByUser { get; set; } = null!;
+
+    public User? ApprovedByUser { get; set; }
+
+    public User? RejectedByUser { get; set; }
 
     public User? DeliveredByUser { get; set; }
 
