@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests;
+using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Constants;
 using PPEInventory.Domain.Entities;
@@ -42,8 +43,11 @@ public class PPERequestRepository
             .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
+            .Include(x => x.ApprovedByUser)
+                .ThenInclude(x => x!.Employee)
             .Include(x => x.Items)
                 .ThenInclude(x => x.PPEProduct)
+                    .ThenInclude(x => x.StockUnitOfMeasure)
             .FirstOrDefaultAsync(
                 x => x.Folio == folio,
                 cancellationToken);
@@ -88,33 +92,92 @@ public class PPERequestRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PPERequest>> GetPendingAsync(
-    int? warehouseId,
-    CancellationToken cancellationToken = default)
+    public async Task<PagedResult<PendingPPERequestDto>> GetPendingAsync(
+        GetPendingPPERequestsQuery filters,
+        CancellationToken cancellationToken = default)
     {
         var query =
             _context.PPERequests
                 .AsNoTracking()
-                .Include(x => x.Employee)
-                .Include(x => x.RequestedForOrganizationalUnit)
-                .Include(x => x.Warehouse)
-                .Include(x => x.RequestReason)
-                .Include(x => x.Items)
-                    .ThenInclude(x => x.PPEProduct)
+                // Same workflow state accepted by DeliverPPERequestCommandHandler.
+                // PendingApproval, Rejected, Cancelled and Delivered are excluded.
                 .Where(x =>
                     x.Status == PPERequestStatus.Pending)
                 .AsQueryable();
 
-        if (warehouseId.HasValue)
+        if (filters.WarehouseId.HasValue)
         {
             query = query.Where(
-                x => x.WarehouseId == warehouseId.Value);
+                x => x.WarehouseId == filters.WarehouseId.Value);
         }
 
-        return await query
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            var search = filters.Search.Trim();
+            query = query.Where(x =>
+                x.Folio.Contains(search) ||
+                x.Employee.EmployeeNumber.Contains(search) ||
+                x.Employee.Name.Contains(search));
+        }
+
+        if (filters.RequestedForOrganizationalUnitId.HasValue)
+        {
+            query = query.Where(x => x.RequestedForOrganizationalUnitId ==
+                filters.RequestedForOrganizationalUnitId.Value);
+        }
+
+        if (filters.DateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(
+                filters.DateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt >= from);
+        }
+
+        // An exclusive upper bound includes the entire final day. MaxValue has
+        // no following day, and already includes every representable timestamp.
+        if (filters.DateTo.HasValue && filters.DateTo.Value < DateOnly.MaxValue)
+        {
+            var toExclusive = DateTime.SpecifyKind(
+                filters.DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt < toExclusive);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id)
+            .Skip((filters.PageNumber - 1) * filters.PageSize)
+            .Take(filters.PageSize)
+            .Select(x => new PendingPPERequestDto
+            {
+                Id = x.Id,
+                Folio = x.Folio,
+                CreatedAt = x.CreatedAt,
+                EmployeeId = x.EmployeeId,
+                EmployeeNumber = x.Employee.EmployeeNumber,
+                EmployeeName = x.Employee.Name,
+                RequestedForOrganizationalUnitId = x.RequestedForOrganizationalUnitId,
+                RequestedForOrganizationalUnitName = x.RequestedForOrganizationalUnit == null
+                    ? null : x.RequestedForOrganizationalUnit.Name,
+                WarehouseId = x.WarehouseId,
+                WarehouseName = x.Warehouse.Name,
+                RequestReasonId = x.RequestReasonId,
+                RequestReason = x.RequestReason.Name,
+                RequestReasonCode = x.RequestReason.Code,
+                ItemCount = x.Items.Count,
+                Status = x.Status,
+                ApprovedAt = x.ApprovedAt
+            })
             .ToListAsync(cancellationToken);
+
+        return new PagedResult<PendingPPERequestDto>
+        {
+            Items = items,
+            PageNumber = filters.PageNumber,
+            PageSize = filters.PageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<PagedResult<PendingApprovalPPERequestDto>> GetPendingApprovalPageAsync(

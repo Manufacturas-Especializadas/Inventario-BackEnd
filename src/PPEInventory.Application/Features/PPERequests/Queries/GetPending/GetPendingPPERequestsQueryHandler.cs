@@ -1,12 +1,13 @@
 ﻿using MediatR;
 using PPEInventory.Application.Interfaces;
+using PPEInventory.Application.Common.Models;
 
 namespace PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 
 public class GetPendingPPERequestsQueryHandler
     : IRequestHandler<
         GetPendingPPERequestsQuery,
-        IReadOnlyList<PPERequestDto>>
+        PagedResult<PendingPPERequestDto>>
 {
     private readonly IPPERequestRepository _repository;
 
@@ -16,17 +17,19 @@ public class GetPendingPPERequestsQueryHandler
         _repository = repository;
     }
 
-    public async Task<IReadOnlyList<PPERequestDto>> Handle(
+    public Task<PagedResult<PendingPPERequestDto>> Handle(
         GetPendingPPERequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var requests =
-            await _repository.GetPendingAsync(
-                request.WarehouseId,
-                cancellationToken);
+        var normalizedRequest = request with
+        {
+            Search = string.IsNullOrWhiteSpace(request.Search)
+                ? null
+                : request.Search.Trim()
+        };
 
-        return requests
-            .Select(x => x.ToDto())
-            .ToArray();
+        return _repository.GetPendingAsync(
+            normalizedRequest,
+            cancellationToken);
     }
 }

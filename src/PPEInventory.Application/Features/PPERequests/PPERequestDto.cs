@@ -35,6 +35,11 @@ public class PPERequestDto
     public DateTime? DeliveredAt { get; set; }
 
     public DateTime? CancelledAt { get; set; }
+    public int? ApprovedByUserId { get; set; }
+
+    public string? ApprovedByUserName { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
 
     public string? CancellationReason { get; set; }
 

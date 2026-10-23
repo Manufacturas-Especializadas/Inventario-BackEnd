@@ -1,0 +1,721 @@
+AUDITORÍA FUNCIONAL Y TÉCNICA DEL SISTEMA DE INVENTARIO DE EPP
+Fecha: 23 de octubre de 2026
+Etapa: análisis exclusivamente
+
+Repositorios:
+Backend: https://github.com/Manufacturas-Especializadas/Inventario-BackEnd
+Frontend: https://github.com/Manufacturas-Especializadas/Inventario-FrontEnd
+
+El sistema ya tiene un núcleo operativo considerable. La prioridad es cerrar inconsistencias de acceso, integridad y trazabilidad antes de agregar estadísticas. La arquitectura actual permite hacerlo sin reconstruir inventario, solicitudes ni movimientos.
+
+Contrasté las copias locales con main en GitHub: sus árboles versionados coinciden con backend dc861ae2 y frontend e5573ad4. Dejé intactos los cambios locales previos: AddPPERequestApprovalWorkflow.sql y LoginPage.tsx.
+
+Esta es una auditoría estática del código, contratos, configuración y migraciones, complementada con estas comprobaciones:
+
+- TypeScript: pasó sin emitir archivos.
+- ESLint: falló con tres errores existentes.
+- Los últimos pipelines publicados de backend y frontend aparecen exitosos.
+  Backend: https://github.com/Manufacturas-Especializadas/Inventario-BackEnd/actions/runs/39657908048
+  Frontend: https://github.com/Manufacturas-Especializadas/Inventario-FrontEnd/actions/runs/39657720883
+- No encontré una suite automatizada de pruebas funcionales o de concurrencia.
+- No conecté la base de datos, ejecuté migraciones ni hice pruebas que modificaran información.
+
+Por tanto, “implementado” significa que encontré el recorrido correspondiente en el código. No significa que haya certificado su ejecución en producción ni que las migraciones estén aplicadas allí.
+
+Referencias de archivos:
+Las rutas relativas del backend parten de:
+C:\Users\hector.camacho\Music\PPEInventory
+
+Las rutas relativas del frontend parten de:
+C:\Users\hector.camacho\Music\PPEInventory-FrontEnd
+
+========================================================================
+1. ESTADO ACTUAL DEL SISTEMA
+========================================================================
+
+En la columna “BD” describo el modelo y las migraciones del repositorio, no una inspección de la base desplegada.
+
+| Módulo | Backend | Frontend | BD | Estado | Observaciones |
+|---|---|---|---|---|---|
+| Autenticación | Login, JWT, usuario actual, BCrypt | Login, sesión, rutas protegidas | User, Role, UserRole | Parcial | Falta invalidación efectiva de sesiones ante bajas, cambio de roles o contraseña. |
+| Usuarios y roles | Crear, editar usuario, activar, asignar roles, restablecer contraseña | UsersPage | Entidades y restricciones de unicidad | Completo en administración básica | Roles fijos; no existe un administrador granular de permisos. No hace falta construirlo todavía. |
+| Empleados | Crear, editar, activar y consultar por nómina | EmployeesPage | Employee | Completo en administración básica | Sin expediente integral de consumo; organización actual diferente de organización histórica. |
+| Organización | Crear y listar jerarquía | OrganizationalUnitsPage | OrganizationalUnit | Parcial | Sin mantenimiento completo de edición/baja. |
+| Departamentos y líneas anteriores | Crear y consultar | Sin páginas dedicadas | Department, ProductionLine | Backend heredado | Coexisten con OrganizationalUnit; no deben ampliarse como una segunda estructura. |
+| Productos EPP | Alta, edición, estado y consulta | PPEProductsPage, ProductsCatalogPanel | PPEProduct | Parcial | Catálogo funcional; faltan restricciones sobre cambios que afectan inventario e historia. |
+| Categorías | Alta, edición, estado y consulta | PPECategoriesPage | PPECategory | Completo en alcance básico | Reutilizable para consumo por tipo de EPP. |
+| Unidades, tallas y colores | Alta, edición, estado y consulta | UnitsPage, SizesPage, ColorsPage | Catálogos independientes | Completo en alcance básico | Cambiar la unidad de un producto usado requiere controles adicionales. |
+| Proveedores | Alta, edición, estado y consulta | SuppliersPage | Supplier | Completo en alcance básico | Falta análisis de compras/recepciones por proveedor. |
+| Producto–proveedor | Asignación, consulta y estado | Página y modales de asignación | ProductSupplier | Parcial | Guarda empaque, unidad de compra y proveedor preferido; no encontré actualización completa de esos datos. |
+| Almacenes | Crear y consultar | WarehousesPage | Warehouse | Parcial | No encontré edición/baja operativa completa. |
+| Producto–almacén | Asignar, asignación masiva, activar/desactivar | Modales desde productos y almacenes | WarehouseProduct | Completo en alcance básico | Ya impide desasignar con stock o reservas. No confundir esta relación con existencias. |
+| Compras | Crear, editar, cancelar, listar y consultar | PurchaseOrdersPage | PurchaseOrder, PurchaseOrderItem | Parcial | Nacen confirmadas; filtros incompletos y brecha transaccional en edición. |
+| Recepción | Recibir compra completa, movimientos y actualización de saldos | ReceivingPage | GoodsReceipt, GoodsReceiptItem | Parcial | Acceso de Warehouse bloqueado por consultas auxiliares; sin recepciones parciales ni historial consultable. |
+| Existencias | Consulta por almacén; físico, reservado y disponible | InventoryPage | InventoryBalance | Parcial | Omite productos configurados sin saldo y productos desactivados. |
+| Bajo mínimo | Query específica y bandera en saldos | Filtro y resumen en inventario | PPEProduct.MinimumStock | Parcial | Existe; no necesita un módulo nuevo. La pantalla no consume la Query que incluye productos sin saldo. |
+| Movimientos | Consulta paginada con filtros | Sin pantalla ni método correspondiente en InventoryService | InventoryMovement | Backend existente; frontend faltante | Es la base natural del historial del producto. |
+| Solicitudes múltiples | Crear, validar, reservar | Formularios administrativo y Producción | PPERequest, PPERequestItem | Parcial como ciclo completo | Creación funcional; seguimiento del solicitante incompleto. |
+| Aprobación/rechazo | Commands y bandeja paginada | PPERequestApprovalsSection | Autor, fecha y motivo de rechazo | Completo en flujo excepcional básico | Ya existe. No todas las solicitudes requieren aprobación. |
+| Cancelación y liberación | Valida propietario/estado y libera reservas | Administración; falta acceso propio en Producción | Datos de cancelación en solicitud | Parcial | Backend más completo que la experiencia del solicitante. |
+| Entrega | Valida nómina/estado, descuenta físico y reservado, genera movimiento | DeliveriesPage | Solicitud y movimientos | Completo en entrega total básica | Sin entregas parciales; costo de salida no calculado. |
+| Historial de solicitudes | Paginado por nómina | Dentro de solicitudes administrativas | Solicitudes y artículos | Parcial | Ya existe, pero sin filtros amplios ni todos los responsables expuestos. |
+| Límites de entrega | Límite por ciclo y herencia organizacional | Configuración de organización/productos | OrganizationalUnitPPELimit y producto | Implementado con alcance específico | El consumo del límite es por unidad organizacional, no por empleado. |
+| Conteos físicos | Crear, capturar, enviar, aplicar, cancelar y eliminar borrador | Página y componentes especializados | InventoryCount, InventoryCountItem | Completo en ciclo básico; parcial en historial | No encontré listado histórico general de cerrados. |
+| Ajustes manuales | Crear, consultar y registrar auditoría | InventoryAdjustmentsPage | Cabecera, detalle, movimientos y auditoría | Completo en flujo básico | Falta protección contra repetición de la misma operación. |
+| Auditoría | Consulta paginada | AuditLogsPage | AuditLog | Parcial | Solo algunos procesos escriben eventos. |
+| Dashboard | Sin Queries de indicadores | DashboardPage | Datos operativos disponibles | Frontend de inicio; analítica no implementada | Son accesos rápidos y datos de sesión. |
+| Reportes | Sin implementación funcional encontrada | Sin módulo | Reutilizables las entidades actuales | No implementado como capacidad formal | Algunas consultas existentes son bases de reportes. |
+| Excel | Sin infraestructura encontrada | Sin exportaciones | No aplica | No implementado | No hay librería declarada para Excel. |
+| Devoluciones/saldos iniciales específicos | Valores de enum | Sin flujo | Tipos de movimiento | Modelo nominal sin funcionalidad real | Un enum no equivale a un proceso implementado. |
+| Transferencias entre almacenes | Sin flujo encontrado | Sin pantalla | Sin documento de transferencia | No implementado | Solo desarrollar si corresponde a la operación real. |
+
+La evidencia transversal está en:
+- Backend: src/PPEInventory.Application/Features
+- Backend: src/PPEInventory.Api/Controllers
+- Backend: src/PPEInventory.Infrastructure/Persistence/ApplicationDbContext.cs
+- Frontend: src/routes/routes.tsx
+
+========================================================================
+2. FUNCIONALIDADES COMPLETAMENTE IMPLEMENTADAS
+========================================================================
+
+Dentro de su alcance actual, encontré recorridos completos para:
+
+- Administración básica de usuarios, empleados, proveedores y catálogos.
+- Asignación individual y masiva de productos a almacenes.
+- Creación de solicitudes con múltiples productos y rechazo de renglones duplicados.
+- Reserva de solicitudes normales.
+- Aprobación y rechazo de solicitudes excepcionales.
+- Cancelación válida con liberación de reservas.
+- Entrega total con descuento de inventario y movimiento asociado.
+- Ajuste manual con motivo, responsable, saldos anteriores/posteriores y auditoría.
+- Conteo físico desde captura hasta aplicación de diferencias.
+
+No deben volver a construirse reservas, cancelaciones, entrega, aprobación excepcional, conteos ni un segundo registro de movimientos.
+
+Por ejemplo, ApprovePPERequestCommandHandler ya vuelve a validar disponibilidad y reserva dentro de una transacción. DeliverPPERequestCommandHandler ya registra la salida y al usuario que entrega.
+
+Referencias backend:
+- src/PPEInventory.Application/Features/PPERequests/Commands/Approve/ApprovePPERequestCommandHandler.cs
+- src/PPEInventory.Application/Features/PPERequests/Commands/Deliver/DeliverPPERequestCommandHandler.cs
+
+Esto no elimina los riesgos transversales descritos más adelante.
+
+========================================================================
+3. FUNCIONALIDADES PARCIALMENTE IMPLEMENTADAS
+========================================================================
+
+Los flujos reconstruidos muestran dónde termina realmente cada capacidad.
+
+COMPRA Y RECEPCIÓN
+
+Crear compra → Confirmed → recibir toda la compra → GoodsReceipt → movimientos PurchaseReceipt → aumentar existencias → Received
+
+También existe:
+
+Confirmed → Cancelled
+
+Particularidades:
+
+- Draft existe en PurchaseOrderStatus, pero la creación usa directamente Confirmed; no encontré un flujo de borrador y confirmación.
+- La cantidad recibida se calcula como OrderedPurchaseQuantity × UnitsPerPackage.
+- El usuario no captura cantidades efectivamente recibidas por renglón.
+- Solo se admite una recepción por compra.
+- Todos los productos deben poder recibirse en el almacén elegido.
+- No existe consulta de historial de recepciones, aunque los datos quedan guardados.
+- Warehouse puede entrar a recepción y tiene autorizado el POST, pero sus consultas previas requieren Administrator.
+
+Esto está implementado en ReceivePurchaseOrderCommandHandler y reforzado por la relación uno a uno de GoodsReceiptConfiguration.
+
+Referencias backend:
+- src/PPEInventory.Application/Features/GoodsReceipts/Commands/ReceivePurchaseOrder/ReceivePurchaseOrderCommandHandler.cs
+- src/PPEInventory.Infrastructure/Persistence/Configurations/GoodsReceiptConfiguration.cs
+
+SOLICITUD NORMAL
+
+Identificar empleado y destino → validar productos/almacén/límite → validar disponible → Pending + reserva → entrega → Delivered + salida
+
+Alternativamente:
+
+Pending → cancelación → Cancelled + liberación
+
+SOLICITUD EXCEPCIONAL: DAÑO, PÉRDIDA U OTRO
+
+Crear con justificación → PendingApproval, sin reserva → aprobar → Pending + reserva → entregar
+
+O bien:
+
+PendingApproval → Rejected / Cancelled
+
+La creación excepcional exige disponibilidad en ese momento, aunque todavía no la reserva. Por ello una aprobación posterior puede fallar por falta de stock. Es una decisión actual del negocio, no una reserva defectuosa.
+
+No existe estado Approved. Una solicitud excepcional aprobada vuelve a Pending y conserva ApprovedAt/ApprovedByUserId. Las estadísticas deben respetar esa diferencia.
+
+BRECHA DEL SOLICITANTE
+
+ProductionPPERequestForm permite crear y muestra el resultado inmediato. No ofrece una bandeja persistente de “Mis solicitudes”.
+
+Referencia frontend:
+src/components/ppe-requests/ProductionPPERequestForm.tsx
+
+Además, GET /api/ppe-requests/history y GET /api/ppe-requests/{folio} utilizan la política Viewer, que no incluye Production. No basta agregar una tabla al frontend: hace falta una lectura propia autorizada en backend.
+
+CONTEO FÍSICO
+
+Draft → capturar todos los artículos → Submit → PendingReview → Post → Posted
+
+Alternativas:
+- Eliminar un Draft.
+- Cancelar un PendingReview.
+
+Durante Draft se bloquean recepciones, entregas, reservas normales y ajustes en ese almacén. Al enviar a revisión se guarda la diferencia y se reabre la operación.
+
+Al aplicar, el backend hace:
+
+existencia actual + diferencia capturada
+
+Esto preserva movimientos posteriores al envío. No encontré el error de sobrescribir el saldo actual con el conteo antiguo. Está en PostInventoryCountCommandHandler.
+
+Referencia backend:
+src/PPEInventory.Application/Features/InventoryCounts/Commands/Post/PostInventoryCountCommandHandler.cs
+
+Falta el historial general de conteos aplicados/cancelados. No hay devolución a captura; actualmente una revisión incorrecta se cancela y debe iniciarse otro conteo.
+
+AJUSTE MANUAL
+
+Motivo + artículos → validar saldo y reservas → guardar antes/después → movimiento → AuditLog
+
+El flujo existe. Falta distinguir un reintento de red de un segundo ajuste intencional.
+
+========================================================================
+4. FUNCIONALIDADES FALTANTES
+========================================================================
+
+| Clasificación | Funcionalidades |
+|---|---|
+| OBLIGATORIO | Resolver recepción para Warehouse; evitar ocultamiento de stock; proteger cambios de unidad/identidad del producto; cerrar la edición concurrente de compras; invalidar accesos revocados; proteger operaciones sensibles frente a reintentos; pruebas de invariantes de inventario. |
+| OBLIGATORIO si se admiten compras parciales en la empresa | Capturar cantidades reales y recepciones parciales. El modelo actual no representa ese proceso. |
+| RECOMENDADO | Mis solicitudes; responsables y motivos visibles; pantalla de movimientos; historial de recepciones y conteos cerrados; búsquedas globales; reportes operativos; Excel selectivo; tablero de pendientes y abastecimiento. |
+| RECOMENDADO | Auditoría de cambios de producto, límites, compras y permisos; consulta de conciliación entre saldos, movimientos y reservas. |
+| MEJORA FUTURA | Parámetros por almacén, máximos/reorden, costos de entrega, devoluciones y transferencias cuando el proceso lo requiera. |
+| NO RECOMENDADO POR AHORA | Motor de BI propio, predicción con IA, microservicios, event sourcing, diseñador genérico de reportes, permisos configurables de alta complejidad. |
+
+No recomiendo crear un “módulo de estadísticas” independiente de las consultas operativas. Debe construirse sobre las mismas reglas de lectura.
+
+========================================================================
+5. PROBLEMAS O RIESGOS ENCONTRADOS
+========================================================================
+
+No confirmé un problema que deba etiquetar como Crítico con la evidencia disponible. Sí encontré varios Altos.
+
+| Severidad | Hallazgo | Consecuencia |
+|---|---|---|
+| Alto | Warehouse no puede consultar compras ni almacenes receptores | La pantalla de recepción no completa su flujo para ese rol. |
+| Alto | Desactivar un producto no comprueba existencias/reservas; la consulta de saldos excluye productos inactivos | Stock existente desaparece de la vista operativa. |
+| Alto | Se permite cambiar StockUnitId de un producto usado | Las cantidades existentes pueden pasar a interpretarse en otra unidad sin conversión. |
+| Alto | JWT sigue válido después de retirar permisos o desactivar usuario | El acceso anterior puede mantenerse hasta expirar el token. |
+| Alto | Ajustes y creación de solicitudes carecen de identificación de operación para reintentos | Un POST repetido puede crear otro documento y afectar inventario otra vez. |
+| Alto | Edición de compra fuera de una transacción que cubra lectura, validación y guardado | Hay ventanas frente a cancelación/recepción concurrente y modificaciones de información que ya debería estar cerrada. |
+| Medio | Filtros locales sobre compras paginadas | Falsos resultados vacíos o incompletos. |
+| Medio | Productos asignados sin fila en InventoryBalance no aparecen en inventario general | El listado de agotados/bajo mínimo puede ser incompleto. |
+| Medio | DTOs omiten responsables, aprobación y rechazo | Trazabilidad almacenada pero inaccesible para el usuario. |
+| Medio | Auditoría solo cubre algunos Commands | No se puede reconstruir quién cambió permisos, límites o datos importantes. |
+| Medio | Sin pruebas automatizadas de concurrencia | Las protecciones presentes no están respaldadas por regresiones verificables. |
+| Medio | Sin limitación de intentos de login en la aplicación | Falta control aplicativo contra intentos repetidos; protección externa no verificada. |
+| Medio | Borradores de conteo pueden borrarse con capturas | Se pierde la evidencia de ese intento de conteo. |
+| Medio | Descripciones y clasificación históricas dependen de catálogos actuales | Una edición puede cambiar cómo se interpreta un reporte anterior. |
+| Bajo | “Productos” en inventario cuenta filas producto–almacén | Un SKU en dos almacenes se cuenta dos veces. |
+| Bajo | Tres errores de ESLint existentes | La verificación de calidad del frontend no está limpia. |
+
+Evidencia principal:
+
+- Backend: src/PPEInventory.Api/Controllers/PurchaseOrdersController.cs
+  Frente a frontend: src/pages/ReceivingPage.tsx
+- Backend: src/PPEInventory.Application/Features/PPEProducts/Commands/SetStatus/SetPPEProductStatusCommandHandler.cs
+  Frente a backend: src/PPEInventory.Infrastructure/Repositories/InventoryRepository.cs
+- Backend: src/PPEInventory.Application/Features/PPEProducts/Update/UpdatePPEProductCommandHandler.cs
+- Backend: src/PPEInventory.Application/Features/PurchaseOrders/Commands/Update/UpdatePurchaseOrderCommandHandler.cs
+
+Matiz sobre compras: el handler sí prohíbe editar compras recibidas o canceladas cuando las lee. El problema es que esa comprobación no está protegida durante toda la operación. No estoy afirmando haber reproducido corrupción de recepciones; las claves foráneas también pueden hacer fallar ciertas carreras.
+
+========================================================================
+6. DASHBOARD RECOMENDADO
+========================================================================
+
+El DashboardPage actual debe conservar sus accesos rápidos y evolucionar según el rol.
+
+Referencia frontend: src/pages/DashboardPage.tsx
+
+| Usuario | Contenido prioritario |
+|---|---|
+| Almacén | Solicitudes listas para entregar, pendientes antiguos, productos agotados/bajo mínimo, compras por recibir y conteos abiertos. |
+| Administración | Excepciones por autorizar, ajustes recientes, diferencias por revisar, pendientes vencidos y consumo del periodo. |
+| Compras, mediante el rol que se defina | Faltantes por producto/almacén, compras abiertas, fechas comprometidas vencidas e importes por proveedor/moneda. |
+| Producción | Mis solicitudes, estado actual, motivo de rechazo/cancelación y acción para solicitar. |
+| Consulta/Seguridad | Existencias y consumo permitido, sin acciones de modificación ni costos si no corresponden. |
+
+Primera versión recomendada:
+
+1. Productos agotados.
+2. Productos bajo mínimo.
+3. Solicitudes listas para entrega.
+4. Solicitudes excepcionales pendientes de autorización.
+5. Compras pendientes y vencidas.
+6. Conteos pendientes de revisión.
+
+Cada indicador debe abrir el listado filtrado que lo explica.
+
+Después añadiría dos gráficos:
+- Consumo mensual por categoría.
+- Productos más entregados en el periodo.
+
+Evitaría una tarjeta principal que sume piezas, pares y otras unidades como si fueran homogéneas. Los totales físicos deben desglosarse por unidad de medida o tener un alcance inequívoco.
+
+========================================================================
+7. ESTADÍSTICAS RECOMENDADAS
+========================================================================
+
+Las categorías “modelo actual” y “Query nueva” se complementan: tener los datos no implica que exista el indicador.
+
+| Indicador | ¿Modelo suficiente? | Desarrollo necesario | Prioridad |
+|---|---|---|---|
+| Total de productos | Sí | Agregado de productos únicos; distinguir activos y catálogo total | Media |
+| Unidades físicas/disponibles/reservadas | Sí | Query agregada por almacén y unidad; corregir visibilidad | Alta |
+| Inventario por almacén | Sí | Ampliar consulta actual | Alta |
+| Agotados | Sí | Incluir asignaciones sin saldo; distinguir físico cero y disponible cero | Alta |
+| Bajo mínimo | Sí, mínimo global por producto | Reutilizar/corregir presentación de Query existente | Alta |
+| Sobre máximo | No | Almacenar máximo y definir alcance | Posterior |
+| Entradas/salidas por periodo | Sí | Agregación de movimientos | Alta |
+| Entregas, recepciones y ajustes | Sí | Separar tipos de movimiento y documentos | Alta |
+| Movimientos por almacén | Sí | Query existente para detalle; nueva agregación | Alta |
+| Consumo mensual | Sí | Entregas efectivas por DeliveredAt | Alta |
+| Consumo por empleado | Sí | Query de entregas, no solicitudes creadas | Alta |
+| Consumo por departamento/área/línea | Sí, con límites históricos | Agregar por destino guardado y recorrer jerarquía | Alta |
+| Consumo por tipo de EPP | Sí, según categoría actual | Query por categoría; snapshot si se exige clasificación histórica exacta | Alta |
+| EPP más entregados | Sí | Query con cantidades y unidad | Media |
+| Empleados/departamentos con mayor consumo | Sí | Query con contexto de periodo, producto y motivo | Media |
+| Solicitudes creadas/pendientes/rechazadas/entregadas/canceladas | Sí | Query agregada por estado y fecha pertinente | Alta |
+| Solicitudes aprobadas | Sí | Usar ApprovedAt; no existe estado Approved | Media |
+| Solicitudes por periodo | Sí | Query nueva | Media |
+| Tiempo solicitud → entrega | Sí | Solo entregadas, DeliveredAt − CreatedAt | Media |
+| Compras pendientes/recibidas | Sí | Agregación de estado | Alta |
+| Importe por periodo/proveedor/producto | Sí, cuando hay costo | Query separada por moneda y ordenado/recibido | Media |
+| Costo de consumo | No de forma confiable | Política de valuación y persistencia del costo de salida | Posterior |
+| Días de cobertura/previsión | Parcial | Historia confiable, demanda y reglas de reposición | No todavía |
+
+Precisiones necesarias:
+
+- Consumo = EPP entregado, no reservado ni solicitado.
+- En solicitudes, una cifra “creadas durante octubre” y otra “entregadas durante octubre” usan fechas distintas.
+- Aprobadas durante un periodo es un evento; puede incluir solicitudes hoy entregadas o canceladas.
+- El destino guardado en RequestedForOrganizationalUnitId puede diferir de la organización actual del empleado.
+- Un límite heredado de un departamento no significa que el backend agregue automáticamente el consumo de todos sus descendientes: actualmente consulta la unidad destino concreta.
+- La migración organizacional completó solicitudes anteriores con la organización del empleado existente al migrar. Eso no demuestra que fuera su organización original en la fecha de entrega.
+
+No usaría rankings de empleados como conclusión de “abuso”: el volumen también depende de puesto, exposición, dotación y motivo de reposición.
+
+========================================================================
+8. HISTORIAL Y TRAZABILIDAD RECOMENDADOS
+========================================================================
+
+| Pregunta | Respuesta actual | Qué falta |
+|---|---|---|
+| ¿Quién recibió el EPP? | PPERequest.EmployeeId identifica al destinatario registrado | No equivale a comprobante firmado de recepción. |
+| ¿Cuándo y cuánto recibió? | DeliveredAt y cantidades de artículos | Reporte por periodo/producto. |
+| ¿Quién autorizó? | Datos almacenados para solicitudes excepcionales | Exponerlos en detalle/historial. Las normales no tienen autorización explícita. |
+| ¿Quién entregó? | DeliveredByUserId almacenado | Nombre/usuario en DTO y pantalla. |
+| ¿De qué almacén salió? | Guardado y mostrado | Enlace al historial del almacén/producto. |
+| ¿Stock antes/después? | Guardado para ajustes manuales | No está persistido en cada movimiento. |
+| ¿Qué solicitó un empleado? | Historial paginado por nómina | Filtros y acceso propio para Producción. |
+| ¿Cuánto consumió en un periodo? | Datos suficientes | Query agregada de entregas. |
+| ¿Movimientos de un producto? | Endpoint paginado existente | Pantalla y vínculo al documento origen. |
+| ¿Qué cambios manuales se hicieron? | Ajustes con motivo y detalle | Mejor búsqueda y reporte. |
+| ¿Quién ajustó? | Disponible en ajustes | Integración con historial del producto. |
+| ¿Qué llegó mediante una compra? | Relación compra → recepción → artículos | Consultas de recepción y navegación. |
+| ¿Qué proveedor suministró? | Se resuelve desde la compra | Reporte de recepción/proveedor. No trazabilidad de cada unidad entregada hasta su compra. |
+
+Los límites de exposición se observan en estas referencias backend:
+- src/PPEInventory.Application/Features/PPERequests/PPERequestDto.cs
+- src/PPEInventory.Application/Features/Inventory/InventoryMovementDto.cs
+- src/PPEInventory.Application/Features/InventoryCounts/InventoryCountMappings.cs
+
+Recomiendo tres recorridos conectados:
+
+- Empleado: solicitudes, entregas y consumo filtrado.
+- Producto: saldos por almacén, movimientos y documentos origen.
+- Documento: artículos, responsables, fechas, cambios de estado y motivo.
+
+No hace falta una tabla nueva de “historial” para estas consultas.
+
+Respecto a inmutabilidad:
+
+- No encontré endpoints para editar o eliminar movimientos publicados.
+- Los conteos publicados no pueden recapturarse mediante el flujo existente.
+- Las solicitudes entregadas no pueden cancelarse mediante el Command actual.
+- Los borradores de conteo sí pueden eliminarse, incluso con capturas, sin conservar un evento equivalente.
+- Nombres, categoría, talla, color y unidad del producto pueden alterar la interpretación de consultas históricas.
+- Cambiar ReplacementIntervalDays afecta el cálculo actual del ciclo sobre entregas anteriores.
+- La auditoría no cubre de forma general esos cambios.
+
+Para saldos anteriores/posteriores, un acumulado de movimientos puede servir si primero se demuestra que la historia está completa y concilia con el saldo. No lo presentaría como evidencia exacta sin esa comprobación.
+
+========================================================================
+9. REPORTES RECOMENDADOS
+========================================================================
+
+“Ampliar” significa reutilizar consultas o entidades actuales; no crear otro módulo de persistencia.
+
+| Reporte | Utilidad e información | Filtros | Entidades | Backend / frontend | Prioridad |
+|---|---|---|---|---|---|
+| Inventario actual | Físico, reservado, disponible, unidad y mínimo | Almacén, producto, categoría, estado | InventoryBalance, WarehouseProduct, PPEProduct | Ampliar / ampliar Inventario | Alta |
+| Bajo mínimo | Faltantes para abastecer | Almacén, categoría, producto | Las anteriores | Reutilizar Query / ampliar | Alta |
+| Agotados | Identificar interrupciones | Almacén, producto; físico/disponible cero | Las anteriores, incluyendo sin saldo | Nueva variante de Query / ampliar | Alta |
+| Movimientos | Explicar entradas y salidas | Fechas, almacén, producto, tipo, origen, responsable | InventoryMovement y documentos | Ampliar DTO/Query / nueva vista | Alta |
+| Entregas EPP | Evidencia operativa para Seguridad | Fecha de entrega, nómina, destino, producto, almacén, motivo | PPERequest, artículos, usuarios | Query nueva / vista dentro de Entregas | Alta |
+| Consumo por empleado | Revisar dotación y reposición | Periodo, nómina, producto, categoría, motivo | Solicitudes entregadas y artículos | Nuevo / nuevo | Alta |
+| Consumo por organización | Planeación de abastecimiento | Periodo, departamento/área/línea, producto | Solicitud y organización destino | Nuevo / nuevo | Alta |
+| Consumo por tipo de EPP | Tendencias y productos de mayor demanda | Periodo, categoría, almacén, destino | Entregas, productos, categorías | Nuevo / nuevo | Media |
+| Historial del empleado | Resolver dudas y revisar recurrencias | Nómina, fechas, estado, motivo, producto | Solicitudes y artículos | Ampliar / ampliar historial | Alta |
+| Historial del producto | Explicar saldo y uso | Producto, almacén, fechas, tipo | Saldos, movimientos y documentos | Reutilizar/ampliar / nuevo detalle | Alta |
+| Solicitudes | Seguimiento de atención | Creación, estado, nómina, destino, folio, almacén | PPERequest, artículos | Query general nueva / ampliar | Alta |
+| Compras pendientes | Seguimiento a proveedor | Proveedor, estado, fechas comprometidas, producto, folio | Compras y artículos | Ampliar filtros / ampliar | Alta |
+| Compras e importes | Comparar cantidades e importes por moneda | Periodo, proveedor, producto, moneda, estado | Compras y artículos | Agregación nueva / ampliar | Media |
+| Recepciones | Saber qué llegó y quién lo recibió | Recepción, compra, proveedor, almacén, producto, responsable | Recepciones y artículos | Queries nuevas / historial nuevo | Alta |
+| Proveedores | Directorio y relaciones comerciales | Estado, nombre, producto | Supplier, ProductSupplier | Reutilizar / ampliar | Baja |
+| Conteos y diferencias | Revisar exactitud y ajustes resultantes | Fechas, almacén, estado, producto, diferencias | Conteos, artículos, movimientos | Listado histórico nuevo / ampliar | Alta |
+| Ajustes manuales | Supervisar correcciones | Fecha, almacén, producto, responsable, motivo | Ajustes, artículos, auditoría | Ampliar / ampliar | Alta |
+| Costos de EPP entregado | Control económico de consumo | Periodo, empleado, destino, producto | Movimientos/entregas con costo | Requiere completar valuación / nuevo | Posterior |
+
+La consulta de auditoría debe seguir siendo una herramienta de control técnico. No sustituye los reportes comprensibles de entregas, compras o ajustes.
+
+========================================================================
+10. EXPORTACIONES EXCEL RECOMENDADAS
+========================================================================
+
+No encontré dependencias de Excel en package.json del frontend ni en los .csproj, ni servicios de generación de libros.
+
+Los volúmenes siguientes son estimaciones de diseño, no mediciones de la base real.
+
+| Exportación | Columnas principales | Filtros | Archivo sugerido | Generación y volumen |
+|---|---|---|---|---|
+| Inventario actual | Almacén, SKU, producto, categoría, unidad, físico, reservado, disponible, mínimo, condición | Almacén, categoría, producto, condición | inventario_2026-10-23.xlsx | Backend; una fila por producto–almacén, normalmente cientos/miles |
+| Bajo mínimo/agotados | Almacén, SKU, producto, disponible, mínimo, faltante | Almacén, categoría, condición | faltantes_2026-10-23.xlsx | Backend; subconjunto del inventario |
+| Movimientos | Fecha, almacén, SKU, tipo, cantidad firmada, unidad, documento, responsable, motivo | Periodo y filtros del reporte | movimientos_2026-10-01_2026-10-31.xlsx | Backend; miles o decenas de miles según periodo |
+| Entregas | Folio, entrega, nómina, empleado, destino, almacén, SKU, cantidad, unidad, motivo, entregó, autorizó | Periodo, empleado, destino, producto | entregas_2026-10.xlsx | Backend; una fila por artículo entregado |
+| Consumo por empleado | Nómina, empleado, SKU/categoría, unidad, cantidad, número de entregas | Periodo, organización, producto | consumo_empleados_2026-10.xlsx | Backend; filas por empleado–producto |
+| Consumo por organización | Ruta organizacional, producto/categoría, unidad, cantidad | Periodo, jerarquía, producto | consumo_organizacion_2026-10.xlsx | Backend; cientos/miles agregadas |
+| Compras | Folio, número externo, proveedor, fechas, estado, producto, empaque, cantidad, costo, moneda, importe | Periodo, proveedor, estado, producto | compras_2026-10.xlsx | Backend; una fila por artículo |
+| Recepciones | Folios recepción/compra, proveedor, fecha, almacén, producto, cantidad recibida, unidad, recibió | Periodo, proveedor, compra, almacén | recepciones_2026-10.xlsx | Backend; una fila por artículo |
+| Conteo individual | Folio, almacén, SKU, contado, sistema al enviar, diferencia, fechas y responsables | Folio; diferencias/todos | conteo_IC-2026-000123.xlsx | Backend; cientos/miles de artículos |
+| Solicitudes | Folio, fechas, estado, nómina, destino, almacén, motivo, producto, cantidad, responsables | Periodo, estado, empleado, almacén | solicitudes_2026-10.xlsx | Backend; una fila por artículo |
+| Ajustes | Folio, fecha, almacén, SKU, ajuste, antes, después, reserva, motivo, responsable | Periodo, almacén, producto, usuario | ajustes_2026-10.xlsx | Backend; detalle histórico |
+| Directorio de proveedores | Nombre, contacto, correo, teléfono, estado | Nombre, estado | proveedores_2026-10-23.xlsx | Frontend aceptable si tiene el conjunto completo; volumen pequeño |
+
+Arquitectura recomendada:
+
+- Reutilizar los mismos filtros y reglas de autorización del reporte.
+- Query de lectura específica para exportación.
+- Interfaz de generación en Application e implementación en Infrastructure.
+- Controller que devuelva el archivo.
+- Frontend que solicite y descargue, sin recorrer páginas para “armar” el reporte.
+- Incluir periodo, filtros, fecha de generación y zona horaria.
+- Mantener códigos de nómina como texto y costos ausentes como vacíos, no cero.
+- Escribir texto de usuario como texto, evitando interpretación accidental como fórmulas.
+- Poner límites razonables de periodo/filas después de medir.
+
+Comenzaría con descargas síncronas acotadas. No hace falta introducir colas, almacenamiento de archivos ni trabajadores en segundo plano ahora.
+
+========================================================================
+11. FILTROS Y BÚSQUEDAS FALTANTES
+========================================================================
+
+| Pantalla o listado | Lo existente | Lo que falta / corregir | Dónde filtrar |
+|---|---|---|---|
+| Inventario | Almacén, texto, bajo mínimo | Agotado físico/disponible, categoría explícita, con reservas, inactivos con stock | Backend al paginar; local válido sobre conjunto completo pequeño |
+| Compras | Texto, estado, fechas y paginación | Los filtros actuales solo afectan la página; agregar proveedor/producto y vencidas | Backend obligatorio |
+| Recepción | Confirmadas paginadas y texto local | Búsqueda global por folio/número/proveedor; fecha comprometida | Backend obligatorio |
+| Solicitudes administrativas pendientes | Texto y ordenación | Periodo, estado general, destino, almacén y producto combinables | Backend |
+| Mis solicitudes | No existe listado | Estado, folio y periodo; identidad derivada de sesión | Backend |
+| Aprobaciones | Paginación | Folio, nómina, almacén, destino, motivo, antigüedad | Backend |
+| Entregas pendientes | Texto, unidad destino, fechas, orden y almacén | Paginar en servidor y agregar historial de entregadas | Backend |
+| Historial por empleado | Nómina y paginación | Fechas, estado, producto, motivo, almacén | Backend |
+| Movimientos | Backend ya soporta almacén, producto, tipo, fechas y paginación | Pantalla; responsable, folio y origen legible | Backend |
+| Ajustes | Almacén, fechas y consulta por folio | Producto, responsable, motivo y paginación | Backend |
+| Auditoría | Entidad, ID de usuario, fechas, paginación | Selector de usuario, acción y documento/entidad específica | Backend |
+| Conteos, listado | Borradores, revisión y búsqueda por folio | Almacén, fechas, cerrados/cancelados, responsable | Backend |
+| Conteo, artículos | Texto, capturados/pendientes, con/sin diferencia | Categoría si el tamaño lo requiere | Local para un conteo cargado |
+| Productos | Texto, categoría y estado | Talla/color, almacén y proveedor cuando aporten valor | Local inicialmente; backend al crecer |
+| Categorías/unidades/tallas/colores | Texto y estado | Sin brecha urgente de filtros | Local |
+| Proveedores | Texto y estado | Producto suministrado, si se integra con compras | Local para directorio pequeño |
+| Producto–proveedor | Selección y relaciones | Búsqueda por SKU/código proveedor; mantenimiento más claro | Local en relación pequeña |
+| Almacenes | Listado | Texto y estado | Local |
+| Organización y límites | Selección de unidad y configuración | Ruta jerárquica, tipo, texto; límites efectivos/heredados | Local con catálogo pequeño |
+| Empleados | Texto y estado | Filtro jerárquico explícito y sin unidad asignada | Backend al paginar |
+| Usuarios | Texto, roles dentro del texto y estado | Rol explícito, empleado/unidad, estado del empleado | Local inicialmente |
+
+El caso más urgente se ve en PurchaseOrdersPage: purchaseOrders.filter(...) opera sobre resultados de getPage(...).
+
+Referencia frontend: src/pages/PurchaseOrdersPage.tsx
+
+También debe unificarse el significado de “Desde/Hasta”. Hay consultas con timestamps y otras que convierten fechas a medianoche UTC. El periodo de negocio debe acordarse para la zona de la empresa y traducirse consistentemente al servidor.
+
+========================================================================
+12. ALERTAS RECOMENDADAS
+========================================================================
+
+| Condición | Visual en módulo | Dashboard | Notificación posterior |
+|---|---|---|---|
+| Disponible cero | Estado claro por producto–almacén | Contador y enlace | Solo si el producto es prioritario |
+| Bajo mínimo | Ya existe parcialmente; completar cobertura | Lista priorizada | Resumen periódico |
+| Sobre máximo | Después de configurar máximo | Indicador secundario | No necesaria al inicio |
+| Reserva antigua | Antigüedad en solicitud | Pendientes más antiguos | Recordatorio al responsable |
+| Excepción sin autorizar | Bandeja con antigüedad | Contador | Recordatorio |
+| Solicitud lista sin entregar | Fecha y días de espera | Lista accionable | Posterior |
+| Compra vencida sin recibir | Fecha comprometida y proveedor | Pendientes vencidos | Posterior |
+| Conteo en Draft | Advertencia de almacén bloqueado | Conteo abierto | No inmediata |
+| Conteo con diferencias por revisar | Diferencias y fecha de envío | Contador | Posterior |
+| Saldo que no concilia | Aviso solo para responsables | Indicador de control | Escalar cuando se confirme |
+
+Para medir edad de reserva:
+- Normal: desde creación.
+- Excepcional aprobada: desde aprobación.
+
+No usaría vencimiento automático que libere reservas sin definir el proceso. Primero visibilidad y cancelación explícita.
+
+========================================================================
+13. ANÁLISIS DE COSTOS
+========================================================================
+
+El sistema ya tiene información económica, pero no una valuación completa.
+
+| Concepto | Situación |
+|---|---|
+| Costo por unidad de compra | Existe PurchaseOrderItem.PurchaseUnitCost, opcional. |
+| Costo por unidad de stock recibida | Se calcula dividiendo por UnitsPerPackage y se guarda en el movimiento de recepción. |
+| Último costo | Puede consultarse a partir de recepciones; requiere Query y tratamiento de moneda/costos ausentes. |
+| Promedio de costos comprados | Calculable como estadística si hay costos y moneda comparable. |
+| Costo promedio del inventario disponible | No está implementado como método de valuación. |
+| Importe por producto/proveedor | Calculable desde compras, distinguiendo ordenado y recibido. |
+| Gasto financiero real | No verificable: no encontré facturas, pagos, impuestos o cargos completos. |
+| Costo por empleado/departamento | No confiable actualmente: las entregas guardan costo nulo. |
+| Costo mensual de EPP entregado | Requiere completar valuación de salidas. |
+| Valor económico de ajustes/conteos | No determinado: sus movimientos también pueden carecer de costo. |
+
+No se deben sumar MXN, USD u otras monedas en una sola cifra.
+
+Para una fase posterior de costos haría falta definir:
+
+1. Método de valuación.
+2. Tratamiento del saldo inicial y ajustes.
+3. Moneda de valuación y, si corresponde, tipo de cambio.
+4. Registro del costo aplicado a cada salida.
+5. Tratamiento de entradas sin costo.
+
+La propiedad InventoryMovement.UnitCost puede reutilizarse. No justifica por sí sola crear un sistema contable paralelo.
+
+========================================================================
+14. MEJORAS DE UX
+========================================================================
+
+Las mejoras de mayor valor son funcionales:
+
+- Producción: recuperar solicitudes después de recargar, ver motivos y poder cancelar las propias cuando corresponda.
+- Almacén: completar recepción con sus permisos; ver productos agotados aunque nunca hayan tenido saldo.
+- Solicitudes aprobadas: distinguir “lista para entrega” de “pendiente de autorización”.
+- Compras: búsqueda global y advertencia inequívoca de que la recepción actual incorpora toda la orden.
+- Trazabilidad: enlaces de movimiento a solicitud, recepción, compra, ajuste o conteo.
+- Historial: mostrar nombres de responsables, no obligar a consultar IDs o JSON.
+- Organización: mostrar ruta completa; dos áreas pueden tener nombres iguales.
+- Auditoría: selector de usuario y comparaciones legibles.
+- Conteos: conservar advertencia de bloqueo y facilitar historial de aplicados/cancelados.
+- Formularios largos: separar responsabilidades visuales de las páginas de solicitudes y compras.
+
+Encontré páginas de más de dos mil líneas, como PPERequestsPage y PurchaseOrdersPage. Eso aumenta el costo de mantener formularios, consultas y acciones en un solo componente. La separación debe hacerse cuando se intervenga cada flujo, no mediante una reescritura general.
+
+Ya existen estados de carga, errores, confirmaciones y bloqueos de envío en varias operaciones. No sería correcto afirmar que toda la aplicación carece de feedback o protección frente al doble clic.
+
+La navegación puede simplificarse:
+
+- Retirar del menú operativo el placeholder /admin mientras no aporte funciones.
+- Mantener producto–proveedor accesible desde productos/proveedores y evaluar si necesita además una entrada principal.
+- Agrupar consulta de solicitudes, autorizaciones e historial con etiquetas consistentes.
+- Dar acceso directo a la información que explica cada indicador.
+
+La evaluación visual y de accesibilidad queda limitada al código; no hice una sesión de uso en navegador con usuarios reales.
+
+========================================================================
+15. SEGURIDAD Y CONCURRENCIA
+========================================================================
+
+PROTECCIONES EXISTENTES QUE DEBEN CONSERVARSE
+
+- Policies de backend para Administrator, Warehouse, Production y Viewer.
+- Validación mediante FluentValidation y MediatR.
+- Transacciones serializables en operaciones centrales.
+- Bloqueos UPDLOCK, HOLDLOCK para documentos de solicitudes, compras y conteos.
+- RowVersion en saldos.
+- Restricciones SQL: físico no negativo, reserva no negativa y reserva no mayor al físico.
+- Entrega solo desde Pending.
+- Cancelación solo desde Pending/PendingApproval.
+- Propiedad de cancelación validada para Production.
+- Productos duplicados dentro de una solicitud rechazados.
+- Una recepción por compra mediante restricción única.
+- Un conteo abierto por almacén.
+- Aplicación de conteo que protege el stock reservado.
+
+La base está en estas referencias backend:
+- src/PPEInventory.Infrastructure/Persistence/EfUnitOfWork.cs
+- src/PPEInventory.Infrastructure/Persistence/Configurations/InventoryBalanceConfiguration.cs
+- src/PPEInventory.Infrastructure/Repositories/PPERequestRepository.cs
+
+| Riesgo solicitado | Evaluación |
+|---|---|
+| Stock negativo | Hay defensa en backend y BD. No encontré una ruta normal que lo permita sin violar esas protecciones. |
+| Entrega duplicada del mismo folio | Protegida por bloqueo, estado y transacción. |
+| Aprobación/reserva duplicada del mismo folio | Protegida por estado y bloqueo. |
+| Dos solicitudes idénticas nuevas | Pueden crearse si vuelven a pasar disponibilidad/límites; falta idempotencia del comando de creación. |
+| Recepción duplicada de una compra | Protegida por estado, transacción y unicidad. |
+| Ajuste manual duplicado por reintento | No protegido como misma operación de negocio. |
+| Cancelar una entregada | Rechazado por backend. |
+| Cancelar solicitud ajena desde Production | Rechazado por CreatedByUserId. |
+| Ver solicitudes de otros | Viewer/Warehouse/Administrator tienen alcance general según policies. No lo clasificaría como IDOR sin una regla de alcance más estrecha. |
+| Acciones administrativas sin rol | Los endpoints revisados están protegidos; el riesgo relevante es conservar un JWT con permisos retirados. |
+| Modificar movimientos históricos | No encontré endpoint de modificación; sí pueden cambiar sus descripciones mediante catálogos relacionados. |
+| Dos operadores simultáneos | Hay protecciones relevantes; falta prueba real sobre SQL Server y cobertura de edición de compras. |
+
+En Program.cs, JWT valida firma, vigencia, emisor y audiencia. No encontré una validación por petición del estado actual del usuario o de una versión de sesión. La configuración versionada indica 60 minutos de vigencia, aunque producción puede sobrescribirla.
+
+Referencia backend: src/PPEInventory.Api/Program.cs
+
+Además:
+
+- GetCurrentUserQueryHandler devuelve roles del token; no resuelve esta revocación.
+- EfUnitOfWork traduce DbUpdateConcurrencyException, pero no todos los conflictos SQL/deadlocks reciben tratamiento específico.
+- GetBalancesForUpdateAsync usa una consulta ordenada; no incorpora por sí misma UPDLOCK. Su protección depende de la transacción y RowVersion.
+- La captura ciega de conteos oculta comparaciones en su DTO, pero Warehouse conserva acceso general a inventario. Es una ayuda de proceso, no una restricción absoluta contra consultar el saldo.
+- No encontré restricciones de separación entre quien crea una excepción y quien la autoriza cuando el mismo administrador puede ejecutar ambas acciones. Debe decidirse según el control interno deseado.
+
+Las primeras pruebas de integración deben cubrir entrega/entrega, entrega/cancelación, aprobación/aprobación, recepción/recepción, edición/cancelación de compra y ajuste frente a reservas.
+
+========================================================================
+16. CAMBIOS DE BASE DE DATOS QUE PODRÍAN SER NECESARIOS
+========================================================================
+
+La mayoría de reportes, filtros, estadísticas y pantallas históricas no necesita nuevas tablas.
+
+| Necesidad | Cambio posible | Justificación |
+|---|---|---|
+| Idempotencia de creación | Identificador único de operación en cabeceras pertinentes | Reconocer un reintento sin duplicar solicitud o ajuste. Preferible empezar aquí antes de una tabla genérica. |
+| Revocación de sesión | Versión de seguridad en User, si se adopta ese mecanismo | Invalidar tokens tras cambios sensibles. También puede diseñarse validación del estado actual. |
+| Mínimos/máximos por almacén | Campos en WarehouseProduct | Ya es la relación adecuada; no crear otro inventario. |
+| Recepciones parciales | Cambiar compra–recepción a uno a muchos, restricciones y estados | Una compra debe admitir varias recepciones y cantidades pendientes. |
+| Saldos antes/después por movimiento | Campos de snapshot en InventoryMovement | Evidencia directa futura, si se requiere; no inventar retrospectivamente datos. |
+| Contexto histórico exacto | Snapshots selectivos en documentos/artículos | Conservar unidad, clasificación o ruta organizacional cuando deban ser históricamente inmutables. |
+| Costos de salida | Completar UnitCost y contexto monetario; quizá saldo de valuación | Registrar el costo aplicado, no recalcularlo usando precios actuales. |
+| Rendimiento | Índices según Queries y planes reales | Evitar añadir índices especulativos para todos los filtros. |
+
+No cambiaría tablas para:
+
+- Mostrar quién entregó o aprobó: los IDs ya existen.
+- Consultar recepciones: ya están almacenadas.
+- Listar conteos cerrados: ya tienen estado y fechas.
+- Calcular consumo por empleado: ya existe la relación.
+- Crear Excel: es infraestructura de salida.
+- Hacer dashboard: son consultas y agregados.
+
+ARQUITECTURA
+
+La separación Domain → Application → Infrastructure/API es adecuada para seguir creciendo. Usaría:
+
+- Queries específicas para lecturas y agregados.
+- DTOs distintos para listado, detalle y exportación.
+- Proyecciones y agregaciones en SQL, evitando cargar entidades completas para contar.
+- Commands existentes para transiciones e inventario.
+- Interfaces de lectura/exportación en Application e implementaciones en Infrastructure.
+- Auditoría existente ampliada en las operaciones relevantes.
+
+Hay tres duplicidades que conviene contener:
+
+1. Department/ProductionLine frente a OrganizationalUnit. El código de empleados ya declara esta última como fuente de verdad.
+2. GET /api/warehouses/pending repite la consulta de solicitudes pendientes por empleado disponible en PPERequestsController.
+3. Relaciones producto–proveedor accesibles desde varias interfaces. Comparten el modelo, pero pueden generar navegación y lógica visual repetida.
+
+En cambio, InventoryBalance, InventoryMovement, InventoryAdjustment e InventoryCount no son duplicaciones: representan saldo, registro de cambios, documento de ajuste y evidencia de conteo.
+
+========================================================================
+17. FUNCIONALIDADES QUE NO DEBERÍAMOS DESARROLLAR TODAVÍA
+========================================================================
+
+- Un segundo sistema de inventario o historial.
+- Nuevas tablas solo para guardar totales del dashboard.
+- Microservicios o bases separadas para reportes.
+- Event sourcing como reemplazo de los movimientos existentes.
+- Infraestructura de notificaciones en tiempo real.
+- Colas para exportaciones antes de medir el volumen.
+- Un diseñador de reportes configurable por usuarios.
+- Predicción de consumo con IA.
+- Costo FIFO por lotes sin necesidad empresarial comprobada.
+- Un ERP de compras, facturas y pagos dentro del proyecto.
+- Autorizaciones de múltiples niveles si el flujo excepcional actual basta.
+- Entregas parciales, transferencias o devoluciones solo porque otros sistemas las tienen.
+
+Tampoco ampliaría los catálogos heredados de departamentos y líneas. La evolución debe concentrarse en OrganizationalUnit.
+
+========================================================================
+18. ROADMAP PRIORIZADO
+========================================================================
+
+Secuencia para un solo desarrollador. Cada fase debe dejar un resultado utilizable y verificable antes de comenzar la siguiente.
+
+| Fase | Objetivo | Backend | Frontend | BD | Dependencias | Riesgo / complejidad | Valor |
+|---|---|---|---|---|---|---|---|
+| 1. Confiabilidad operativa | Cerrar los riesgos altos | Permisos de recepción, visibilidad de stock, invariantes de producto, transacción de edición de compra, revocación e idempotencia | Errores claros, acciones coherentes, estados de reintento | Posibles campos de operación/seguridad; no una remodelación general | Ninguna | Alto / Alta | Evita decisiones erróneas y operaciones duplicadas |
+| 2. Cerrar el ciclo del solicitante | Producción puede seguir y cancelar lo propio | Queries propias, ownership y DTO completo de estados | Mis solicitudes, detalle y cancelación | No prevista | Fase 1 | Medio / Media | Reduce consultas manuales y solicitudes repetidas |
+| 3. Trazabilidad operativa | Explicar cada entrega y movimiento | Ampliar movimientos; recepciones; conteos cerrados; responsables; filtros globales | Historiales y enlaces a documentos | No necesaria para primera versión; snapshots solo si se decide | Fases 1–2 | Medio / Media-alta | Control de almacén y evidencia para Seguridad |
+| 4. Reportes y Excel prioritarios | Entregar información útil fuera del sistema | Reutilizar consultas; generador de archivos | Exportación filtrada de inventario, movimientos y entregas | No | Fase 3 | Medio / Media | Valor inmediato para operación y administración |
+| 5. Dashboard y alertas visuales | Mostrar qué necesita atención | Agregados y antigüedad | Indicadores con acceso al detalle | No para primera versión | Consultas confiables de fase 3 | Bajo-medio / Media | Evita revisar manualmente múltiples pantallas |
+| 6. Abastecimiento por almacén | Mejorar reposición | Parámetros y consultas de faltantes | Configuración y priorización de compra | Posibles campos en WarehouseProduct | Datos y uso de fases anteriores | Medio / Media | Reduce agotados y sobreinventario |
+| 7. Costos de consumo | Valuar entregas con una regla defendible | Método de costo, salidas y ajustes | Reportes económicos por moneda | Probables campos adicionales | Costos de entrada completos y regla acordada | Alto / Alta | Control económico sin cifras engañosas |
+
+Condición que cambia el orden: si actualmente llegan compras incompletas y se están registrando como completas, la recepción parcial debe entrar inmediatamente después de las correcciones de fase 1. No debería esperar al dashboard.
+
+Dentro de la fase 1 trabajaría en cambios pequeños, con pruebas del caso corregido. No haría simultáneamente una refactorización general del frontend.
+
+========================================================================
+19. LAS PRÓXIMAS 5 TAREAS CONCRETAS QUE DEBERÍA DESARROLLAR
+========================================================================
+
+Estas son tareas propuestas; no las ejecuté.
+
+1. Habilitar el flujo de recepción para Warehouse.
+   Dar acceso a las lecturas necesarias mediante contratos adecuados para almacén. Verificar que pueda consultar órdenes confirmadas, seleccionar almacén y recibir, manteniendo edición/cancelación de compra restringidas.
+
+2. Corregir la consulta de inventario y sus totales.
+   Incluir productos asignados sin saldo; hacer visibles inactivos con existencias/reservas; distinguir SKU únicos de posiciones producto–almacén. Alinear inventario general con bajo mínimo.
+
+3. Proteger la identidad y unidad de productos utilizados.
+   Impedir cambios incompatibles de unidad cuando hay historia o existencias; definir la baja con reservas y documentos abiertos; auditar cambios relevantes.
+
+4. Cerrar la transacción de edición de compras.
+   Mantener lectura, comprobación de estado y persistencia bajo protección consistente. Probar edición contra cancelación y recepción simultáneas.
+
+5. Completar la seguridad de sesiones y reintentos.
+   Invalidar accesos retirados y reconocer el mismo intento de creación de ajuste/solicitud. Probar que un reintento devuelve un resultado coherente sin un segundo efecto.
+
+Después de estas tareas, desarrollaría el seguimiento propio de solicitudes y el historial operativo.
+
+========================================================================
+20. RECOMENDACIÓN DE CUÁL DEBERÍA SER EXACTAMENTE EL SIGUIENTE MÓDULO
+========================================================================
+
+El siguiente módulo funcional debe ser “Historial operativo y trazabilidad de EPP”, ampliando Inventario, Solicitudes y Entregas existentes.
+
+Su primera entrega debe permitir consultar un empleado o producto y conocer:
+
+- Qué se solicitó y qué se entregó.
+- Fechas, cantidades, almacén y destino.
+- Quién creó, autorizó, entregó o canceló.
+- Movimiento y documento que explican cada cambio.
+- Filtros y paginación confiables.
+
+Antes de iniciar ese módulo, completaría la fase de confiabilidad operativa. La primera tarea inmediata es corregir la recepción para el rol Warehouse. El dashboard vendría después, cuando cada cifra pueda abrir un historial que permita comprobarla.

@@ -129,13 +129,25 @@ public class PPERequestsController : ControllerBase
     [HttpGet("pending")]
     [Authorize(Policy = AuthorizationPolicies.Viewer)]
     public async Task<IActionResult> GetPending(
-    [FromQuery] int? warehouseId,
-    CancellationToken cancellationToken)
+        [FromQuery] int? warehouseId = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int? requestedForOrganizationalUnitId = null,
+        [FromQuery] DateOnly? dateFrom = null,
+        [FromQuery] DateOnly? dateTo = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = PaginationParameters.DefaultPageSize,
+        CancellationToken cancellationToken = default)
     {
         return Ok(
             await _mediator.Send(
                 new GetPendingPPERequestsQuery(
-                    warehouseId),
+                    warehouseId,
+                    search,
+                    requestedForOrganizationalUnitId,
+                    dateFrom,
+                    dateTo,
+                    pageNumber,
+                    pageSize),
                 cancellationToken));
     }
 
