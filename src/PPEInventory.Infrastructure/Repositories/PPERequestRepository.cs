@@ -22,6 +22,15 @@ public class PPERequestRepository
         _context = context;
     }
 
+    public Task<int> CountByStatusAsync(
+        PPERequestStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.PPERequests.CountAsync(
+            x => x.Status == status,
+            cancellationToken);
+    }
+
     public async Task AddAsync(
         PPERequest request,
         CancellationToken cancellationToken = default)
