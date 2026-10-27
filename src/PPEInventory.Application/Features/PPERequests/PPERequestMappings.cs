@@ -55,6 +55,12 @@ public static class PPERequestMappings
             ApprovedAt =
     request.ApprovedAt,
 
+            DeliveredByUserId =
+    request.DeliveredByUserId,
+
+            DeliveredByUserName =
+    request.DeliveredByUser?.Employee.Name,
+
             DeliveredAt =
     request.DeliveredAt,
 

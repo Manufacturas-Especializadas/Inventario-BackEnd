@@ -27,6 +27,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
+    public DbSet<UserManagedOrganizationalUnit> UserManagedOrganizationalUnits => Set<UserManagedOrganizationalUnit>();
+
     public DbSet<PPECategory> PPECategories => Set<PPECategory>();
 
     public DbSet<PPEProduct> PPEProducts => Set<PPEProduct>();

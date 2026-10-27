@@ -1,6 +1,6 @@
 namespace PPEInventory.Application.Features.PPERequests;
 
-public class PPERequestItemDto
+public class PendingApprovalPPERequestItemDto
 {
     public int PPEProductId { get; set; }
 
@@ -9,12 +9,4 @@ public class PPERequestItemDto
     public string ProductName { get; set; } = string.Empty;
 
     public int Quantity { get; set; }
-
-    public int StockUnitId { get; set; }
-
-    public string StockUnitName { get; set; } = string.Empty;
-
-    public string? StockUnitSymbol { get; set; }
-
-    public int? ReplacementIntervalDays { get; set; }
 }

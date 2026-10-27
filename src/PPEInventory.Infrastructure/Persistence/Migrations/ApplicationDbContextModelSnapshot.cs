@@ -1490,6 +1490,21 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UserManagedOrganizationalUnit", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrganizationalUnitId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "OrganizationalUnitId");
+
+                    b.HasIndex("OrganizationalUnitId");
+
+                    b.ToTable("UserManagedOrganizationalUnits", (string)null);
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.UserRole", b =>
                 {
                     b.Property<int>("UserId")
@@ -2193,6 +2208,25 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("PPEInventory.Domain.Entities.UserManagedOrganizationalUnit", b =>
+                {
+                    b.HasOne("PPEInventory.Domain.Entities.OrganizationalUnit", "OrganizationalUnit")
+                        .WithMany()
+                        .HasForeignKey("OrganizationalUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PPEInventory.Domain.Entities.User", "User")
+                        .WithMany("ManagedOrganizationalUnits")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OrganizationalUnit");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PPEInventory.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("PPEInventory.Domain.Entities.Role", "Role")
@@ -2361,6 +2395,8 @@ namespace PPEInventory.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PPEInventory.Domain.Entities.User", b =>
                 {
+                    b.Navigation("ManagedOrganizationalUnits");
+
                     b.Navigation("UserRoles");
                 });
 

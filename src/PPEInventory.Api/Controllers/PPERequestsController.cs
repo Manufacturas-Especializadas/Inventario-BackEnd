@@ -4,18 +4,19 @@ using Microsoft.AspNetCore.Mvc;
 using PPEInventory.Api.Authorization;
 using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests.Cancellation;
-using PPEInventory.Application.Features.PPERequests.Commands.Cancel;
 using PPEInventory.Application.Features.PPERequests.Commands.Approve;
-using PPEInventory.Application.Features.PPERequests.Commands.Reject;
+using PPEInventory.Application.Features.PPERequests.Commands.Cancel;
 using PPEInventory.Application.Features.PPERequests.Commands.Create;
 using PPEInventory.Application.Features.PPERequests.Commands.Deliver;
+using PPEInventory.Application.Features.PPERequests.Commands.Reject;
 using PPEInventory.Application.Features.PPERequests.Delivery;
 using PPEInventory.Application.Features.PPERequests.Queries.GetByFolio;
+using PPEInventory.Application.Features.PPERequests.Queries.GetDeliveryHistory;
 using PPEInventory.Application.Features.PPERequests.Queries.GetEmployeeHistory;
+using PPEInventory.Application.Features.PPERequests.Queries.GetFormOptions;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPendingApproval;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPendingByEmployee;
-using PPEInventory.Application.Features.PPERequests.Queries.GetFormOptions;
 using PPEInventory.Application.Features.PPERequests.Queries.GetRequestableProducts;
 
 namespace PPEInventory.Api.Controllers;
@@ -146,6 +147,57 @@ public class PPERequestsController : ControllerBase
                     requestedForOrganizationalUnitId,
                     dateFrom,
                     dateTo,
+                    pageNumber,
+                    pageSize),
+                cancellationToken));
+    }
+
+    [HttpGet("delivery-history")]
+    [Authorize(
+    Policy =
+        AuthorizationPolicies.Warehouse)]
+    public async Task<IActionResult>
+    GetDeliveryHistory(
+        [FromQuery]
+            DateOnly deliveredFrom,
+
+        [FromQuery]
+            DateOnly deliveredTo,
+
+        [FromQuery]
+            string? employeeNumber = null,
+
+        [FromQuery]
+            string? search = null,
+
+        [FromQuery]
+            int? warehouseId = null,
+
+        [FromQuery]
+            int?
+            requestedForOrganizationalUnitId =
+                null,
+
+        [FromQuery]
+            int pageNumber = 1,
+
+        [FromQuery]
+            int pageSize =
+                PaginationParameters
+                    .DefaultPageSize,
+
+        CancellationToken
+            cancellationToken = default)
+    {
+        return Ok(
+            await _mediator.Send(
+                new GetDeliveryHistoryQuery(
+                    deliveredFrom,
+                    deliveredTo,
+                    employeeNumber,
+                    search,
+                    warehouseId,
+                    requestedForOrganizationalUnitId,
                     pageNumber,
                     pageSize),
                 cancellationToken));

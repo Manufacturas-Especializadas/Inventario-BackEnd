@@ -20,6 +20,16 @@ public class UserRepository : IUserRepository
         return _context.Users.AnyAsync(cancellationToken);
     }
 
+    public Task<User?> GetByIdWithManagedUnitsAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Users
+            .Include(x => x.ManagedOrganizationalUnits)
+                .ThenInclude(x => x.OrganizationalUnit)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
     public Task<bool> ExistsByUsernameAsync(
         string username,
         CancellationToken cancellationToken = default)

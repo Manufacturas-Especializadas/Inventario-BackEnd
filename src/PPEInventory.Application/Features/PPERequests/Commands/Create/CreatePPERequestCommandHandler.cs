@@ -26,6 +26,7 @@ public class CreatePPERequestCommandHandler
     private readonly IOrganizationalUnitRepository _organizationalUnitRepository;
     private readonly IOrganizationalUnitPPELimitRepository _organizationalUnitPPELimitRepository;
     private readonly IWarehouseProductRepository _warehouseProductRepository;
+    private readonly IUserRepository _userRepository;
 
     public CreatePPERequestCommandHandler(
         IEmployeeRepository employeeRepository,
@@ -40,7 +41,8 @@ public class CreatePPERequestCommandHandler
         IDateTimeProvider dateTimeProvider,
         IOrganizationalUnitPPELimitRepository organizationalUnitPPELimitRepository,
         IOrganizationalUnitRepository organizationalUnitRepository,
-        IWarehouseProductRepository warehouseProductRepository)
+        IWarehouseProductRepository warehouseProductRepository,
+        IUserRepository userRepository)
     {
         _employeeRepository = employeeRepository;
         _warehouseRepository = warehouseRepository;
@@ -55,6 +57,7 @@ public class CreatePPERequestCommandHandler
         _organizationalUnitPPELimitRepository = organizationalUnitPPELimitRepository;
         _organizationalUnitRepository = organizationalUnitRepository;
         _warehouseProductRepository = warehouseProductRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<CreatePPERequestResultDto> Handle(
@@ -90,6 +93,15 @@ public class CreatePPERequestCommandHandler
         try
         {
             Employee employee;
+            User? productionUser = null;
+
+            if (!isAdministrator)
+            {
+                productionUser = await _userRepository.GetByIdWithManagedUnitsAsync(userId, cancellationToken)
+                    ?? throw new UnauthorizedException("Authenticated user was not found.");
+                if (!productionUser.IsActive)
+                    throw new ForbiddenException("The authenticated user is inactive.");
+            }
 
             if (isAdministrator)
             {
@@ -112,6 +124,13 @@ public class CreatePPERequestCommandHandler
                     cancellationToken)
                     ?? throw new NotFoundException(
                         $"Employee with id '{employeeId}' was not found.");
+
+                if (request.EmployeeNumber is not null &&
+                    !string.Equals(request.EmployeeNumber.Trim(), employee.EmployeeNumber,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ForbiddenException("EmployeeNumber must match the authenticated employee.");
+                }
             }
 
             if (!employee.IsActive)
@@ -129,26 +148,28 @@ public class CreatePPERequestCommandHandler
             }
             else
             {
-                requestedForOrganizationalUnitId = employee.OrganizationalUnitId
-                    ?? throw new ConflictException(
-                        $"Employee '{employee.EmployeeNumber}' does not have an organizational unit assigned and cannot create PPE requests.");
+                var managedUnitIds = productionUser!.ManagedOrganizationalUnits
+                    .Where(x => x.OrganizationalUnit.IsActive)
+                    .Select(x => x.OrganizationalUnitId)
+                    .ToHashSet();
 
-                if (request.EmployeeNumber is not null &&
-                    !string.Equals(
-                        request.EmployeeNumber.Trim(),
-                        employee.EmployeeNumber,
-                        StringComparison.OrdinalIgnoreCase))
+                if (managedUnitIds.Count == 0)
                 {
-                    throw new ConflictException(
-                        "EmployeeNumber must match the authenticated employee.");
+                    throw new ForbiddenException("The authenticated user has no active managed organizational units.");
                 }
 
-                if (request.RequestedForOrganizationalUnitId.HasValue &&
-                    request.RequestedForOrganizationalUnitId.Value !=
-                        requestedForOrganizationalUnitId)
+                // Legacy omission is allowed only when an authorized default is unambiguous.
+                var defaultUnitId = employee.OrganizationalUnitId.HasValue &&
+                    managedUnitIds.Contains(employee.OrganizationalUnitId.Value)
+                        ? employee.OrganizationalUnitId
+                        : managedUnitIds.Count == 1 ? managedUnitIds.Single() : (int?)null;
+                requestedForOrganizationalUnitId = request.RequestedForOrganizationalUnitId
+                    ?? defaultUnitId
+                    ?? throw new ConflictException("Select a managed organizational unit for consumption.");
+
+                if (!managedUnitIds.Contains(requestedForOrganizationalUnitId))
                 {
-                    throw new ConflictException(
-                        "RequestedForOrganizationalUnitId must match the authenticated employee's current organizational unit.");
+                    throw new ForbiddenException("The consumption unit is not an active organizational unit managed by the authenticated user.");
                 }
             }
 
@@ -667,6 +688,15 @@ public class CreatePPERequestCommandHandler
 
                             Quantity =
                                 item.Quantity,
+
+                            StockUnitId =
+                                 product.StockUnitId,
+
+                            StockUnitName =
+                                product.StockUnitOfMeasure.Name,
+
+                            StockUnitSymbol =
+                                product.StockUnitOfMeasure.Symbol,
 
                             ReplacementIntervalDays =
                                 product.ReplacementIntervalDays

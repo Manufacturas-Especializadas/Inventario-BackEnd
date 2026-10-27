@@ -4,6 +4,10 @@ namespace PPEInventory.Application.Interfaces;
 
 public interface IUserRepository
 {
+    Task<User?> GetByIdWithManagedUnitsAsync(
+        int id,
+        CancellationToken cancellationToken = default);
+
     Task<bool> AnyAsync(
         CancellationToken cancellationToken = default);
 
