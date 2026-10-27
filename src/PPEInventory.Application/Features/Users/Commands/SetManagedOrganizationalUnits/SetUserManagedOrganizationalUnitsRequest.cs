@@ -1,0 +1,3 @@
+namespace PPEInventory.Application.Features.Users.Commands.SetManagedOrganizationalUnits;
+
+public record SetUserManagedOrganizationalUnitsRequest(IReadOnlyCollection<int> OrganizationalUnitIds);

@@ -9,6 +9,8 @@ using PPEInventory.Application.Features.Users.Commands.SetStatus;
 using PPEInventory.Application.Features.Users.Commands.Update;
 using PPEInventory.Application.Features.Users.Commands.ResetPassword;
 using PPEInventory.Application.Features.Users.Commands.SetRoles;
+using PPEInventory.Application.Features.Users.Commands.SetManagedOrganizationalUnits;
+using PPEInventory.Application.Features.Users.Queries.GetManagedOrganizationalUnits;
 
 namespace PPEInventory.Api.Controllers;
 
@@ -122,6 +124,23 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
+
+    [HttpGet("{id:int}/managed-organizational-units")]
+    public async Task<IActionResult> GetManagedOrganizationalUnits(
+        int id, CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.Send(
+            new GetUserManagedOrganizationalUnitsQuery(id), cancellationToken));
+    }
+
+    [HttpPut("{id:int}/managed-organizational-units")]
+    public async Task<IActionResult> SetManagedOrganizationalUnits(
+        int id, SetUserManagedOrganizationalUnitsRequest request, CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new SetUserManagedOrganizationalUnitsCommand(id, request.OrganizationalUnitIds), cancellationToken);
+        return NoContent();
+    }
 
     [HttpPut("{id:int}/password")]
     public async Task<IActionResult> ResetPassword(

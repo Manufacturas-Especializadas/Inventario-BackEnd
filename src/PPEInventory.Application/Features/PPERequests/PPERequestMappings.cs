@@ -44,10 +44,25 @@ public static class PPERequestMappings
                 request.Notes,
 
             CreatedAt =
-                request.CreatedAt,
+    request.CreatedAt,
+
+            ApprovedByUserId =
+    request.ApprovedByUserId,
+
+            ApprovedByUserName =
+    request.ApprovedByUser?.Employee.Name,
+
+            ApprovedAt =
+    request.ApprovedAt,
+
+            DeliveredByUserId =
+    request.DeliveredByUserId,
+
+            DeliveredByUserName =
+    request.DeliveredByUser?.Employee.Name,
 
             DeliveredAt =
-                request.DeliveredAt,
+    request.DeliveredAt,
 
             CancelledAt =
                 request.CancelledAt,
@@ -70,11 +85,20 @@ public static class PPERequestMappings
                                 item.PPEProduct.Name,
 
                             Quantity =
-                                item.Quantity,
+    item.Quantity,
+
+                            StockUnitId =
+    item.PPEProduct.StockUnitId,
+
+                            StockUnitName =
+    item.PPEProduct.StockUnitOfMeasure.Name,
+
+                            StockUnitSymbol =
+    item.PPEProduct.StockUnitOfMeasure.Symbol,
 
                             ReplacementIntervalDays =
-                                item.PPEProduct
-                                    .ReplacementIntervalDays
+    item.PPEProduct
+        .ReplacementIntervalDays
                         })
                     .ToArray()
         };

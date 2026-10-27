@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests;
+using PPEInventory.Application.Features.PPERequests.Queries.GetDeliveryHistory;
+using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Constants;
 using PPEInventory.Domain.Entities;
@@ -42,8 +44,13 @@ public class PPERequestRepository
             .Include(x => x.RequestedForOrganizationalUnit)
             .Include(x => x.Warehouse)
             .Include(x => x.RequestReason)
+            .Include(x => x.ApprovedByUser)
+                .ThenInclude(x => x!.Employee)
+            .Include(x => x.DeliveredByUser)
+                .ThenInclude(x => x!.Employee)
             .Include(x => x.Items)
                 .ThenInclude(x => x.PPEProduct)
+                    .ThenInclude(x => x.StockUnitOfMeasure)
             .FirstOrDefaultAsync(
                 x => x.Folio == folio,
                 cancellationToken);
@@ -88,33 +95,92 @@ public class PPERequestRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PPERequest>> GetPendingAsync(
-    int? warehouseId,
-    CancellationToken cancellationToken = default)
+    public async Task<PagedResult<PendingPPERequestDto>> GetPendingAsync(
+        GetPendingPPERequestsQuery filters,
+        CancellationToken cancellationToken = default)
     {
         var query =
             _context.PPERequests
                 .AsNoTracking()
-                .Include(x => x.Employee)
-                .Include(x => x.RequestedForOrganizationalUnit)
-                .Include(x => x.Warehouse)
-                .Include(x => x.RequestReason)
-                .Include(x => x.Items)
-                    .ThenInclude(x => x.PPEProduct)
+                // Same workflow state accepted by DeliverPPERequestCommandHandler.
+                // PendingApproval, Rejected, Cancelled and Delivered are excluded.
                 .Where(x =>
                     x.Status == PPERequestStatus.Pending)
                 .AsQueryable();
 
-        if (warehouseId.HasValue)
+        if (filters.WarehouseId.HasValue)
         {
             query = query.Where(
-                x => x.WarehouseId == warehouseId.Value);
+                x => x.WarehouseId == filters.WarehouseId.Value);
         }
 
-        return await query
+        if (!string.IsNullOrWhiteSpace(filters.Search))
+        {
+            var search = filters.Search.Trim();
+            query = query.Where(x =>
+                x.Folio.Contains(search) ||
+                x.Employee.EmployeeNumber.Contains(search) ||
+                x.Employee.Name.Contains(search));
+        }
+
+        if (filters.RequestedForOrganizationalUnitId.HasValue)
+        {
+            query = query.Where(x => x.RequestedForOrganizationalUnitId ==
+                filters.RequestedForOrganizationalUnitId.Value);
+        }
+
+        if (filters.DateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(
+                filters.DateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt >= from);
+        }
+
+        // An exclusive upper bound includes the entire final day. MaxValue has
+        // no following day, and already includes every representable timestamp.
+        if (filters.DateTo.HasValue && filters.DateTo.Value < DateOnly.MaxValue)
+        {
+            var toExclusive = DateTime.SpecifyKind(
+                filters.DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt < toExclusive);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
             .OrderBy(x => x.CreatedAt)
             .ThenBy(x => x.Id)
+            .Skip((filters.PageNumber - 1) * filters.PageSize)
+            .Take(filters.PageSize)
+            .Select(x => new PendingPPERequestDto
+            {
+                Id = x.Id,
+                Folio = x.Folio,
+                CreatedAt = x.CreatedAt,
+                EmployeeId = x.EmployeeId,
+                EmployeeNumber = x.Employee.EmployeeNumber,
+                EmployeeName = x.Employee.Name,
+                RequestedForOrganizationalUnitId = x.RequestedForOrganizationalUnitId,
+                RequestedForOrganizationalUnitName = x.RequestedForOrganizationalUnit == null
+                    ? null : x.RequestedForOrganizationalUnit.Name,
+                WarehouseId = x.WarehouseId,
+                WarehouseName = x.Warehouse.Name,
+                RequestReasonId = x.RequestReasonId,
+                RequestReason = x.RequestReason.Name,
+                RequestReasonCode = x.RequestReason.Code,
+                ItemCount = x.Items.Count,
+                Status = x.Status,
+                ApprovedAt = x.ApprovedAt
+            })
             .ToListAsync(cancellationToken);
+
+        return new PagedResult<PendingPPERequestDto>
+        {
+            Items = items,
+            PageNumber = filters.PageNumber,
+            PageSize = filters.PageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<PagedResult<PendingApprovalPPERequestDto>> GetPendingApprovalPageAsync(
@@ -173,70 +239,6 @@ public class PPERequestRepository
             TotalCount = totalCount
         };
     }
-
-    public async Task<IReadOnlyList<PPERequest>>
-    GetHistoryByEmployeeNumberAsync(
-        string employeeNumber,
-        CancellationToken cancellationToken = default)
-    {
-        return await _context.PPERequests
-            .AsNoTracking()
-            .Include(x => x.Employee)
-            .Include(x => x.RequestedForOrganizationalUnit)
-            .Include(x => x.Warehouse)
-            .Include(x => x.RequestReason)
-            .Include(x => x.Items)
-                .ThenInclude(x => x.PPEProduct)
-            .Where(x =>
-                x.Employee.EmployeeNumber == employeeNumber)
-            .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.Id)
-            .ToListAsync(cancellationToken);
-    }
-
-    public Task<int> GetCommittedNormalQuantityInCycleAsync(
-    int requestedForOrganizationalUnitId,
-    int ppeProductId,
-    DateTime cycleStart,
-    CancellationToken cancellationToken = default)
-    {
-        return _context.PPERequestItems
-            .AsNoTracking()
-            .Where(x =>
-                x.PPERequest.RequestedForOrganizationalUnitId ==
-                    requestedForOrganizationalUnitId &&
-
-                x.PPEProductId ==
-                    ppeProductId &&
-
-                x.PPERequest.RequestReason.Code !=
-                    RequestReasonCodes.Damage &&
-
-                x.PPERequest.RequestReason.Code !=
-                    RequestReasonCodes.Lost &&
-
-                x.PPERequest.RequestReason.Code !=
-                    RequestReasonCodes.Other &&
-
-                (
-                    x.PPERequest.Status ==
-                        PPERequestStatus.Pending
-                    ||
-                    (
-                        x.PPERequest.Status ==
-                            PPERequestStatus.Delivered &&
-
-                        x.PPERequest.DeliveredAt.HasValue &&
-
-                        x.PPERequest.DeliveredAt.Value >=
-                            cycleStart
-                    )
-                ))
-                .SumAsync(
-                    x => x.Quantity,
-                    cancellationToken);
-    }
-
 
     public async Task<IReadOnlyDictionary<int, int>>
     GetCommittedNormalQuantitiesInCycleAsync(
@@ -342,8 +344,10 @@ public class PPERequestRepository
                 .Include(x => x.Warehouse)
                 .Include(x => x.RequestReason)
                 .Include(x => x.Items)
+                .ThenInclude(x =>
+                    x.PPEProduct)
                     .ThenInclude(x =>
-                        x.PPEProduct)
+                        x.StockUnitOfMeasure)
                 .OrderByDescending(x =>
                     x.CreatedAt)
                 .ThenByDescending(x =>
@@ -363,5 +367,202 @@ public class PPERequestRepository
             TotalCount = totalCount
         };
     }
+
+    public async Task<PagedResult<DeliveryHistoryPPERequestDto>>
+    GetDeliveryHistoryAsync(
+        GetDeliveryHistoryQuery filters,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            _context.PPERequests
+                .AsNoTracking()
+                .Where(x =>
+                    x.Status ==
+                        PPERequestStatus.Delivered &&
+                    x.DeliveredAt.HasValue)
+                .AsQueryable();
+
+        // Almacén
+        if (filters.WarehouseId.HasValue)
+        {
+            query = query.Where(
+                x =>
+                    x.WarehouseId ==
+                    filters.WarehouseId.Value);
+        }
+
+        // Nómina exacta
+        if (!string.IsNullOrWhiteSpace(
+            filters.EmployeeNumber))
+        {
+            var employeeNumber =
+                filters.EmployeeNumber.Trim();
+
+            query = query.Where(
+                x =>
+                    x.Employee.EmployeeNumber ==
+                    employeeNumber);
+        }
+
+        // Folio o nombre del empleado
+        if (!string.IsNullOrWhiteSpace(
+            filters.Search))
+        {
+            var search =
+                filters.Search.Trim();
+
+            query = query.Where(
+                x =>
+                    x.Folio.Contains(search) ||
+                    x.Employee.Name.Contains(
+                        search));
+        }
+
+        // Unidad organizacional / línea destino
+        if (filters
+            .RequestedForOrganizationalUnitId
+            .HasValue)
+        {
+            query = query.Where(
+                x =>
+                    x.RequestedForOrganizationalUnitId ==
+                    filters
+                        .RequestedForOrganizationalUnitId
+                        .Value);
+        }
+
+        // Desde
+        var from =
+            DateTime.SpecifyKind(
+                filters.DeliveredFrom
+                    .ToDateTime(
+                        TimeOnly.MinValue),
+                DateTimeKind.Utc);
+
+        query = query.Where(
+            x =>
+                x.DeliveredAt >= from);
+
+        // Hasta
+        if (filters.DeliveredTo <
+            DateOnly.MaxValue)
+        {
+            var toExclusive =
+                DateTime.SpecifyKind(
+                    filters.DeliveredTo
+                        .AddDays(1)
+                        .ToDateTime(
+                            TimeOnly.MinValue),
+                    DateTimeKind.Utc);
+
+            query = query.Where(
+                x =>
+                    x.DeliveredAt <
+                    toExclusive);
+        }
+
+        var totalCount =
+            await query.CountAsync(
+                cancellationToken);
+
+        var items =
+            await query
+                .OrderByDescending(
+                    x => x.DeliveredAt)
+                .ThenByDescending(
+                    x => x.Id)
+                .Skip(
+                    (filters.PageNumber - 1) *
+                    filters.PageSize)
+                .Take(
+                    filters.PageSize)
+                .Select(
+                    x =>
+                        new DeliveryHistoryPPERequestDto
+                        {
+                            Id =
+                                x.Id,
+
+                            Folio =
+                                x.Folio,
+
+                            CreatedAt =
+                                x.CreatedAt,
+
+                            DeliveredAt =
+                                x.DeliveredAt!.Value,
+
+                            EmployeeId =
+                                x.EmployeeId,
+
+                            EmployeeNumber =
+                                x.Employee
+                                    .EmployeeNumber,
+
+                            EmployeeName =
+                                x.Employee.Name,
+
+                            RequestedForOrganizationalUnitId =
+                                x.RequestedForOrganizationalUnitId,
+
+                            RequestedForOrganizationalUnitName =
+                                x.RequestedForOrganizationalUnit ==
+                                null
+                                    ? null
+                                    : x.RequestedForOrganizationalUnit
+                                        .Name,
+
+                            WarehouseId =
+                                x.WarehouseId,
+
+                            WarehouseName =
+                                x.Warehouse.Name,
+
+                            RequestReasonId =
+                                x.RequestReasonId,
+
+                            RequestReason =
+                                x.RequestReason.Name,
+
+                            RequestReasonCode =
+                                x.RequestReason.Code,
+
+                            ItemCount =
+                                x.Items.Count,
+
+                            Status =
+                                x.Status,
+
+                            DeliveredByUserId =
+                                x.DeliveredByUserId,
+
+                            DeliveredByUserName =
+                                x.DeliveredByUser ==
+                                null
+                                    ? null
+                                    : x.DeliveredByUser
+                                        .Employee.Name
+                        })
+                .ToListAsync(
+                    cancellationToken);
+
+        return new PagedResult<
+            DeliveryHistoryPPERequestDto>
+        {
+            Items =
+                items,
+
+            PageNumber =
+                filters.PageNumber,
+
+            PageSize =
+                filters.PageSize,
+
+            TotalCount =
+                totalCount
+        };
+    }
+
+
 
 }

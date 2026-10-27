@@ -10,5 +10,11 @@ public class PPERequestItemDto
 
     public int Quantity { get; set; }
 
+    public int StockUnitId { get; set; }
+
+    public string StockUnitName { get; set; } = string.Empty;
+
+    public string? StockUnitSymbol { get; set; }
+
     public int? ReplacementIntervalDays { get; set; }
 }

@@ -22,4 +22,7 @@ public class User
 
     public ICollection<UserRole> UserRoles { get; set; }
         = new List<UserRole>();
+
+    public ICollection<UserManagedOrganizationalUnit> ManagedOrganizationalUnits { get; set; }
+        = new List<UserManagedOrganizationalUnit>();
 }

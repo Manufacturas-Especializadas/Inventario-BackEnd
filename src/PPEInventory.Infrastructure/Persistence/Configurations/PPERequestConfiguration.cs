@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PPEInventory.Domain.Entities;
 
 namespace PPEInventory.Infrastructure.Persistence.Configurations;
@@ -33,8 +34,28 @@ public class PPERequestConfiguration
         builder.Property(x => x.Notes)
             .HasMaxLength(500);
 
+        // These workflow timestamps are generated in UTC. SQL Server datetime2
+        // preserves their value but not DateTime.Kind; restore it only on reads.
+        // EF preserves nulls and reuses this converter for nullable properties.
+        var utcDateTimeConverter = new ValueConverter<DateTime, DateTime>(
+            value => value,
+            value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
         builder.Property(x => x.CreatedAt)
+            .HasConversion(utcDateTimeConverter)
             .IsRequired();
+
+        builder.Property(x => x.ApprovedAt)
+            .HasConversion(utcDateTimeConverter);
+
+        builder.Property(x => x.RejectedAt)
+            .HasConversion(utcDateTimeConverter);
+
+        builder.Property(x => x.DeliveredAt)
+            .HasConversion(utcDateTimeConverter);
+
+        builder.Property(x => x.CancelledAt)
+            .HasConversion(utcDateTimeConverter);
 
         builder.Property(x => x.CancellationReason)
             .HasMaxLength(500);

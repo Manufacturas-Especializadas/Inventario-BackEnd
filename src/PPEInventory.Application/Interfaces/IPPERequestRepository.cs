@@ -1,5 +1,7 @@
 ﻿using PPEInventory.Application.Common.Models;
 using PPEInventory.Application.Features.PPERequests;
+using PPEInventory.Application.Features.PPERequests.Queries.GetDeliveryHistory;
+using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 using PPEInventory.Domain.Entities;
 
 namespace PPEInventory.Application.Interfaces;
@@ -27,25 +29,19 @@ public interface IPPERequestRepository
         string employeeNumber,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<PPERequest>> GetPendingAsync(
-    int? warehouseId,
-    CancellationToken cancellationToken = default);
+    Task<PagedResult<PendingPPERequestDto>> GetPendingAsync(
+        GetPendingPPERequestsQuery filters,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResult<DeliveryHistoryPPERequestDto>>
+    GetDeliveryHistoryAsync(
+        GetDeliveryHistoryQuery filters,
+        CancellationToken cancellationToken = default);
 
     Task<PagedResult<PendingApprovalPPERequestDto>> GetPendingApprovalPageAsync(
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<PPERequest>>
-    GetHistoryByEmployeeNumberAsync(
-        string employeeNumber,
-        CancellationToken cancellationToken = default);
-
-    Task<int> GetCommittedNormalQuantityInCycleAsync(
-    int requestedForOrganizationalUnitId,
-    int ppeProductId,
-    DateTime cycleStart,
-    CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<int, int>>
     GetCommittedNormalQuantitiesInCycleAsync(
