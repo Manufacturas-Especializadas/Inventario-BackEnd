@@ -3,11 +3,16 @@ using PPEInventory.Application.Features.PPERequests;
 using PPEInventory.Application.Features.PPERequests.Queries.GetDeliveryHistory;
 using PPEInventory.Application.Features.PPERequests.Queries.GetPending;
 using PPEInventory.Domain.Entities;
+using PPEInventory.Domain.Enums;
 
 namespace PPEInventory.Application.Interfaces;
 
 public interface IPPERequestRepository
 {
+    Task<int> CountByStatusAsync(
+        PPERequestStatus status,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(
         PPERequest request,
         CancellationToken cancellationToken = default);
