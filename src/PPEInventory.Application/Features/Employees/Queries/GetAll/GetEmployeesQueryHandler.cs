@@ -30,6 +30,7 @@ public class GetEmployeesQueryHandler
                 Id = x.Id,
                 EmployeeNumber = x.EmployeeNumber,
                 Name = x.Name,
+                Email = x.Email,
 
                 DepartmentId = x.DepartmentId,
                 DepartmentName = x.Department?.Name,

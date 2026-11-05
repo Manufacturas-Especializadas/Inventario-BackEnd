@@ -107,6 +107,8 @@ public class SetEmployeeStatusCommandHandler
             Name =
                 employee.Name,
 
+            Email = employee.Email,
+
             DepartmentId =
                 employee.DepartmentId,
 

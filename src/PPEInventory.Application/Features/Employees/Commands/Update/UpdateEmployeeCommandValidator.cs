@@ -22,6 +22,11 @@ public class UpdateEmployeeCommandValidator
                 "Employee name is required.")
             .MaximumLength(150);
 
+        RuleFor(x => x.Email)
+            .MaximumLength(200)
+            .EmailAddress()
+            .When(x => !string.IsNullOrWhiteSpace(x.Email));
+
         RuleFor(
                 x => x.OrganizationalUnitId)
             .GreaterThan(0)
