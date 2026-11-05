@@ -49,6 +49,14 @@ var connectionString =
     ?? throw new InvalidOperationException(
         "Connection string 'DefaultConnection' was not found.");
 
+builder.Services.Configure<PPEInventory.Infrastructure.Notifications.MicrosoftGraphSettings>(
+    builder.Configuration.GetSection(
+        PPEInventory.Infrastructure.Notifications.MicrosoftGraphSettings.SectionName));
+
+builder.Services.Configure<PPEInventory.Infrastructure.Notifications.TeamsWebhookSettings>(
+    builder.Configuration.GetSection(
+        PPEInventory.Infrastructure.Notifications.TeamsWebhookSettings.SectionName));
+
 builder.Services.AddInfrastructure(
     connectionString);
 

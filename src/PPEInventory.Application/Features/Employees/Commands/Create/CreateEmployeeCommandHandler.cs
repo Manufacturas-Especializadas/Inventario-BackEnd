@@ -89,6 +89,8 @@ public class CreateEmployeeCommandHandler
                 Name =
                     employeeName,
 
+                Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
+
                 OrganizationalUnitId =
                     organizationalUnit?.Id,
 
@@ -127,6 +129,8 @@ public class CreateEmployeeCommandHandler
 
             Name =
                 employee.Name,
+
+            Email = employee.Email,
 
             DepartmentId =
                 null,

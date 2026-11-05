@@ -37,6 +37,7 @@ public class GetEmployeeByNumberQueryHandler
             Id = employee.Id,
             EmployeeNumber = employee.EmployeeNumber,
             Name = employee.Name,
+            Email = employee.Email,
 
             DepartmentId = employee.DepartmentId,
             DepartmentName = employee.Department?.Name,

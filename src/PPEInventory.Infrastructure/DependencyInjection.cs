@@ -5,6 +5,7 @@ using PPEInventory.Application.Interfaces;
 using PPEInventory.Infrastructure.Repositories;
 using PPEInventory.Infrastructure.Services;
 using PPEInventory.Infrastructure.Authentication;
+using PPEInventory.Infrastructure.Notifications;
 
 namespace PPEInventory.Infrastructure;
 
@@ -14,6 +15,19 @@ public static class DependencyInjection
         this IServiceCollection services,
         string connectionString)
     {
+        services.AddOptions<MicrosoftGraphSettings>();
+        services.AddSingleton<IEmailSender, MicrosoftGraphEmailSender>();
+        services.AddScoped<INotificationRecipientResolver, RoleNotificationRecipientResolver>();
+        services.AddSingleton<PPERequestEmailTemplateFactory>();
+        services.AddScoped<IPPERequestNotificationService, PPERequestNotificationService>();
+
+        services.AddOptions<TeamsWebhookSettings>();
+        services.AddHttpClient<ITeamsWebhookSender, TeamsWebhookSender>()
+            // The default HTTP loggers include request URIs, which contain webhook secrets.
+            .RemoveAllLoggers()
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+        services.AddSingleton<PPERequestTeamsTemplateFactory>();
+
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
 
         services.AddScoped< IDepartmentRepository, DepartmentRepository>();

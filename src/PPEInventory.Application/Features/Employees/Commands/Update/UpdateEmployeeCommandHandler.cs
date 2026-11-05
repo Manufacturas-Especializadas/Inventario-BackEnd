@@ -115,6 +115,8 @@ public class UpdateEmployeeCommandHandler
         employee.Name =
             employeeName;
 
+        employee.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+
         employee.OrganizationalUnitId =
             organizationalUnit?.Id;
 
@@ -155,6 +157,8 @@ public class UpdateEmployeeCommandHandler
 
             Name =
                 employee.Name,
+
+            Email = employee.Email,
 
             DepartmentId =
                 null,

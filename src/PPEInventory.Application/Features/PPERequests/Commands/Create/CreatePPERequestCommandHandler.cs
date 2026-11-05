@@ -1,5 +1,7 @@
 ﻿using MediatR;
 using PPEInventory.Application.Common.Exceptions;
+using Microsoft.Extensions.Logging;
+using PPEInventory.Application.Common.Notifications;
 using PPEInventory.Application.Common.Constants;
 using PPEInventory.Application.Interfaces;
 using PPEInventory.Domain.Constants;
@@ -27,6 +29,8 @@ public class CreatePPERequestCommandHandler
     private readonly IOrganizationalUnitPPELimitRepository _organizationalUnitPPELimitRepository;
     private readonly IWarehouseProductRepository _warehouseProductRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IPPERequestNotificationService _notifications;
+    private readonly ILogger<CreatePPERequestCommandHandler> _logger;
 
     public CreatePPERequestCommandHandler(
         IEmployeeRepository employeeRepository,
@@ -42,7 +46,9 @@ public class CreatePPERequestCommandHandler
         IOrganizationalUnitPPELimitRepository organizationalUnitPPELimitRepository,
         IOrganizationalUnitRepository organizationalUnitRepository,
         IWarehouseProductRepository warehouseProductRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IPPERequestNotificationService notifications,
+        ILogger<CreatePPERequestCommandHandler> logger)
     {
         _employeeRepository = employeeRepository;
         _warehouseRepository = warehouseRepository;
@@ -58,6 +64,8 @@ public class CreatePPERequestCommandHandler
         _organizationalUnitRepository = organizationalUnitRepository;
         _warehouseProductRepository = warehouseProductRepository;
         _userRepository = userRepository;
+        _notifications = notifications;
+        _logger = logger;
     }
 
     public async Task<CreatePPERequestResultDto> Handle(
@@ -89,6 +97,9 @@ public class CreatePPERequestCommandHandler
             await _unitOfWork
                 .BeginSerializableTransactionAsync(
                     cancellationToken);
+
+        CreatePPERequestResultDto result;
+        string reasonCode;
 
         try
         {
@@ -230,6 +241,8 @@ public class CreatePPERequestCommandHandler
                 throw new NotFoundException(
                     $"Request reason with id '{request.RequestReasonId}' was not found.");
             }
+
+            reasonCode = reason.Code;
 
             var isExceptionalRequest =
     IsExceptionalRequestReason(
@@ -584,7 +597,7 @@ public class CreatePPERequestCommandHandler
             await transaction.CommitAsync(
                 cancellationToken);
 
-            return new CreatePPERequestResultDto
+            result = new CreatePPERequestResultDto
             {
                 Request =
                     MapRequest(
@@ -606,6 +619,34 @@ public class CreatePPERequestCommandHandler
 
             throw;
         }
+
+        // The transaction has committed. Notification failures must never enter the rollback path.
+        try
+        {
+            var created = result.Request;
+            var context = new PPERequestNotificationContext(
+                created.Id, created.Folio, created.EmployeeName, created.EmployeeNumber,
+                created.RequestedForOrganizationalUnitName, reasonCode, created.RequestReason, created.Notes,
+                created.Items.Select(item => new PPERequestNotificationItem(item.ProductName, item.Quantity)).ToArray());
+
+            switch (created.Status)
+            {
+                case PPERequestStatus.Pending:
+                    await _notifications.NotifyPendingAsync(context, cancellationToken);
+                    break;
+                case PPERequestStatus.PendingApproval:
+                    await _notifications.NotifyPendingApprovalAsync(context, cancellationToken);
+                    break;
+            }
+        }
+        catch (Exception)
+        {
+            // Do not log exception details: external services may include credentials/URLs.
+            _logger.LogWarning("Failed to send PPE request notification for {RequestId}/{Folio}.",
+                result.Request.Id, result.Request.Folio);
+        }
+
+        return result;
     }
 
     private static bool IsExceptionalRequestReason(

@@ -22,6 +22,10 @@ public class EmployeeConfiguration
             .IsRequired()
             .HasMaxLength(150);
 
+        builder.Property(x => x.Email)
+            .HasMaxLength(200)
+            .IsUnicode(false);
+
         builder.Property(x => x.IsActive)
             .IsRequired();
 
